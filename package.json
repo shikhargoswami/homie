@@ -1,0 +1,33 @@
+{
+  "name": "homie-platform",
+  "version": "0.1.0",
+  "description": "VR & AI Rental Matching Platform",
+  "private": true,
+  "workspaces": [
+    "packages/api",
+    "packages/mobile",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @homie/api\" \"npm run dev -w @homie/mobile\"",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "test:watch": "npm run test:watch --workspaces",
+    "lint": "eslint packages --ext .ts,.tsx",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json}\"",
+    "typecheck": "tsc --noEmit --composite false",
+    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "prettier": "^3.2.4",
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=22.21.0",
+    "npm": ">=10.0.0"
+  }
+}
