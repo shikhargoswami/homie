@@ -26,7 +26,7 @@ interface Props {
 }
 
 export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { phone } = route.params;
+  const { phone } = route.params || {};
   const [otp, setOTP] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -34,6 +34,11 @@ export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) =>
   const { verifyOTP, isVerifyingOTP, requestOTP } = useAuth();
   
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  // Log only once when component mounts
+  useEffect(() => {
+    console.log('📱 OTPVerificationScreen mounted with phone:', phone);
+  }, []);
 
   // Countdown timer for resend OTP
   useEffect(() => {
@@ -74,6 +79,8 @@ export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) =>
   };
 
   const handleVerify = async (otpCode?: string) => {
+    console.log('🔘 handleVerify called!', { otpCode, currentOTP: otp.join(''), isVerifyingOTP });
+    
     const code = otpCode || otp.join('');
     
     if (code.length !== 6) {
@@ -81,14 +88,31 @@ export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) =>
       return;
     }
 
+    console.log('🔐 Verifying OTP:', { phone, otp: code });
+    
     try {
-      await verifyOTP({ phone, otp: code });
+      const result = await verifyOTP({ phone, otp: code });
+      console.log('✅ OTP verified successfully:', result);
       
-      // Navigation handled by root navigator (authenticated state changed)
+      // Check if profile is completed
+      const user = result?.data?.user;
+      if (user && !user.profileCompleted) {
+        // Navigate to user type selection for onboarding
+        console.log('📝 Profile not completed, navigating to onboarding...');
+        navigation.navigate('UserTypeSelection');
+      }
+      // If profile is completed, RootNavigator will handle navigation to main app
     } catch (error: any) {
+      console.error('❌ OTP verification failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       Alert.alert(
         'Verification Failed',
-        error.response?.data?.error?.message || 'Invalid OTP. Please try again.'
+        error.response?.data?.error?.message || error.message || 'Invalid OTP. Please try again.'
       );
       
       // Clear OTP inputs
@@ -129,7 +153,7 @@ export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) =>
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => { inputRefs.current[index] = ref; }}
               style={[styles.otpInput, digit && styles.otpInputFilled]}
               value={digit}
               onChangeText={(value) => handleOTPChange(value, index)}

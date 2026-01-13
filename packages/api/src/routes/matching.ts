@@ -6,6 +6,7 @@ import {
   getMatchStats,
 } from '../controllers/matching.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { UserRole } from '@homie/shared';
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ const router = express.Router();
 router.get(
   '/recommendations',
   authenticate,
-  authorize(['tenant']),
+  authorize([UserRole.TENANT]),
   getRecommendations
 );
 
@@ -28,7 +29,7 @@ router.get(
 router.post(
   '/swipe',
   authenticate,
-  authorize(['tenant']),
+  authorize([UserRole.TENANT]),
   recordSwipe
 );
 

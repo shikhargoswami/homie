@@ -1,4 +1,5 @@
 import { matchingService } from '../matching.service';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import { cleanDatabase, createTestUser, createTestProperty, closeDatabase } from '../../test/db-helper';
 import { query } from '../../database/client';
 import { redisClient } from '../../database/client';

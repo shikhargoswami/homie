@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { JWTPayload } from '@homie/shared';
 
 /**
@@ -17,8 +17,9 @@ import { JWTPayload } from '@homie/shared';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || 'dev-refresh-secret';
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '30d';
-const REFRESH_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '90d';
+// Use seconds for JWT expiry (30 days = 30 * 24 * 60 * 60)
+const JWT_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
+const REFRESH_EXPIRY_SECONDS = 90 * 24 * 60 * 60;
 
 /**
  * Generate access token (short-lived)
@@ -27,11 +28,12 @@ const REFRESH_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '90d';
  * @returns JWT access token string
  */
 export const generateAccessToken = (payload: Omit<JWTPayload, 'iat' | 'exp'>): string => {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRY,
+  const options: SignOptions = {
+    expiresIn: JWT_EXPIRY_SECONDS,
     issuer: 'homie-api',
     audience: 'homie-app',
-  });
+  };
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
 /**
@@ -43,11 +45,12 @@ export const generateAccessToken = (payload: Omit<JWTPayload, 'iat' | 'exp'>): s
  * - Can revoke refresh tokens (store in database)
  */
 export const generateRefreshToken = (payload: Omit<JWTPayload, 'iat' | 'exp'>): string => {
-  return jwt.sign(payload, REFRESH_SECRET, {
-    expiresIn: REFRESH_EXPIRY,
+  const options: SignOptions = {
+    expiresIn: REFRESH_EXPIRY_SECONDS,
     issuer: 'homie-api',
     audience: 'homie-app',
-  });
+  };
+  return jwt.sign(payload, REFRESH_SECRET, options);
 };
 
 /**

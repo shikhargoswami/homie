@@ -3,7 +3,7 @@ import { query, transaction } from '../database/client';
 import { redisClient } from '../database/client';
 import { smsService } from '../services/sms.service';
 import { generateAccessToken, generateRefreshToken } from '../services/token.service';
-import { generateOTP, getOTPExpiry, verifyOTP } from '../utils/otp';
+import { generateOTP, getOTPExpiry, verifyOTP as verifyOTPUtil } from '../utils/otp';
 import { validatePhone } from '@homie/shared';
 import { OTP_EXPIRY_SECONDS, OTP_MAX_ATTEMPTS } from '@homie/shared';
 
@@ -69,13 +69,19 @@ export const requestOTP = async (
       return;
     }
     
-    // Generate OTP
-    const otp = generateOTP();
+    // Generate OTP - Using hardcoded '123456' for testing (bypass Twilio)
+    // TODO: Remove this in production and use generateOTP()
+    const otp = process.env.NODE_ENV === 'production' ? generateOTP() : '123456';
     const expiresAt = getOTPExpiry(OTP_EXPIRY_SECONDS);
     
     // Store OTP in Redis (key: otp:{phone}, value: OTP code, TTL: 10 minutes)
     const otpKey = `otp:${cleanPhone}`;
     await redisClient.setEx(otpKey, OTP_EXPIRY_SECONDS, otp);
+    
+    // Log OTP to console for testing (remove in production)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔐 [TEST MODE] OTP for ${cleanPhone}: ${otp}`);
+    }
     
     // Store OTP attempts counter
     const attemptsKey = `otp:attempts:${cleanPhone}`;
@@ -85,13 +91,17 @@ export const requestOTP = async (
     const currentCount = recentRequests ? parseInt(recentRequests) : 0;
     await redisClient.setEx(rateLimitKey, 3600, (currentCount + 1).toString()); // 1 hour TTL
     
-    // Send OTP via SMS
-    try {
-      await smsService.sendOTP(cleanPhone, otp);
-    } catch (error) {
-      console.error('Failed to send OTP SMS:', error);
-      // Don't fail the request, OTP is still stored
-      // In production, you might want to retry or use backup SMS provider
+    // Send OTP via SMS (skipped in test mode)
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await smsService.sendOTP(cleanPhone, otp);
+      } catch (error) {
+        console.error('Failed to send OTP SMS:', error);
+        // Don't fail the request, OTP is still stored
+        // In production, you might want to retry or use backup SMS provider
+      }
+    } else {
+      console.log(`📱 [TEST MODE] SMS skipped. Use OTP: ${otp}`);
     }
     
     // Log analytics event
@@ -162,11 +172,18 @@ export const verifyOTP = async (
     
     const cleanPhone = phone.replace(/\D/g, '');
     
-    // Get stored OTP from Redis
-    const otpKey = `otp:${cleanPhone}`;
-    const storedOTP = await redisClient.get(otpKey);
+    // TEST MODE: Bypass Redis check if OTP is '123456' in non-production
+    const isTestBypass = process.env.NODE_ENV !== 'production' && otp === '123456';
     
-    if (!storedOTP) {
+    if (isTestBypass) {
+      console.log(`🔓 [TEST MODE] OTP bypass for ${cleanPhone}`);
+    }
+    
+    // Get stored OTP from Redis (skip in test bypass mode)
+    const otpKey = `otp:${cleanPhone}`;
+    const storedOTP = isTestBypass ? '123456' : await redisClient.get(otpKey);
+    
+    if (!storedOTP && !isTestBypass) {
       res.status(400).json({
         success: false,
         error: {
@@ -177,9 +194,9 @@ export const verifyOTP = async (
       return;
     }
     
-    // Check OTP attempts
+    // Check OTP attempts (skip in test bypass mode)
     const attemptsKey = `otp:attempts:${cleanPhone}`;
-    const attempts = await redisClient.get(attemptsKey);
+    const attempts = isTestBypass ? '0' : await redisClient.get(attemptsKey);
     const attemptCount = attempts ? parseInt(attempts) : 0;
     
     if (attemptCount >= OTP_MAX_ATTEMPTS) {

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Image,
+  ImageBackground,
 } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,11 +18,11 @@ import { Property } from '@services/matching.service';
  * Swipe Screen (Tinder-style)
  * 
  * Features:
- * - Card-based property browsing
+ * - Full-screen card-based property browsing
  * - Swipe gestures (left/right/up for super like)
  * - Match score display
- * - Property details on tap
- * - Empty state when no more properties
+ * - Property details overlay on image
+ * - Floating action buttons
  */
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -119,57 +119,47 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header with stats */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-          <Ionicons name="person-circle-outline" size={32} color="#1a1a1a" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Homie</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Matches')}>
-          <View>
-            <Ionicons name="chatbubbles-outline" size={32} color="#1a1a1a" />
-            {stats && stats.mutualMatches > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{stats.mutualMatches}</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Swipe Cards */}
+      {/* Full-screen Swipe Cards */}
       <View style={styles.swiperContainer}>
         <Swiper
           ref={swiperRef}
           cards={properties}
-          renderCard={(property) => <PropertyCard property={property} onPress={() => handleCardPress(property)} />}
+          renderCard={(property) => (
+            <PropertyCard 
+              property={property} 
+              onPress={() => handleCardPress(property)}
+              stats={stats}
+            />
+          )}
           onSwipedLeft={handleSwipeLeft}
           onSwipedRight={handleSwipeRight}
           onSwipedTop={handleSwipeTop}
           cardIndex={currentIndex}
           backgroundColor="transparent"
           stackSize={3}
-          stackScale={10}
-          stackSeparation={14}
+          stackScale={5}
+          stackSeparation={10}
           disableBottomSwipe
+          cardVerticalMargin={0}
+          cardHorizontalMargin={0}
           overlayLabels={{
             left: {
-              title: 'PASS',
+              title: 'NOPE',
               style: {
                 label: {
                   backgroundColor: '#ef4444',
                   color: '#fff',
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: 'bold',
-                  borderRadius: 8,
-                  padding: 10,
+                  borderRadius: 12,
+                  padding: 12,
                 },
                 wrapper: {
                   flexDirection: 'column',
                   alignItems: 'flex-end',
                   justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: -30,
+                  marginTop: 60,
+                  marginLeft: -40,
                 },
               },
             },
@@ -179,30 +169,30 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
                 label: {
                   backgroundColor: '#10b981',
                   color: '#fff',
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: 'bold',
-                  borderRadius: 8,
-                  padding: 10,
+                  borderRadius: 12,
+                  padding: 12,
                 },
                 wrapper: {
                   flexDirection: 'column',
                   alignItems: 'flex-start',
                   justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: 30,
+                  marginTop: 60,
+                  marginLeft: 40,
                 },
               },
             },
             top: {
-              title: 'SUPER',
+              title: 'SUPER LIKE',
               style: {
                 label: {
                   backgroundColor: '#3b82f6',
                   color: '#fff',
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: 'bold',
-                  borderRadius: 8,
-                  padding: 10,
+                  borderRadius: 12,
+                  padding: 12,
                 },
                 wrapper: {
                   flexDirection: 'column',
@@ -218,14 +208,14 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
         />
       </View>
 
-      {/* Action Buttons */}
+      {/* Floating Action Buttons */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           style={[styles.actionButton, styles.passButton]}
           onPress={() => swiperRef.current?.swipeLeft()}
           disabled={isSwiping}
         >
-          <Ionicons name="close" size={32} color="#ef4444" />
+          <Ionicons name="close" size={36} color="#ef4444" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -233,7 +223,7 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => swiperRef.current?.swipeTop()}
           disabled={isSwiping}
         >
-          <Ionicons name="star" size={28} color="#3b82f6" />
+          <Ionicons name="star" size={30} color="#3b82f6" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -241,87 +231,103 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => swiperRef.current?.swipeRight()}
           disabled={isSwiping}
         >
-          <Ionicons name="heart" size={32} color="#10b981" />
+          <Ionicons name="heart" size={36} color="#10b981" />
         </TouchableOpacity>
       </View>
-
-      {/* Remaining swipes indicator */}
-      {stats && (
-        <View style={styles.statsContainer}>
-          <Text style={styles.statsText}>
-            {stats.todayRemaining} swipes remaining today
-          </Text>
-        </View>
-      )}
     </View>
   );
 };
 
 /**
- * Property Card Component
+ * Property Card Component - Full Screen Immersive Design
  */
 interface PropertyCardProps {
   property: Property;
   onPress: () => void;
+  stats?: any;
 }
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress }) => {
+const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress, stats }) => {
+  // Safely handle potentially null/undefined values
+  const amenities = property.amenities || [];
+  const configuration = property.configuration || 'N/A';
+  const address = property.address || 'Address not available';
+  const neighborhood = property.neighborhood || '';
+  
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.95} onPress={onPress}>
-      {/* Property Image */}
-      <View style={styles.imageContainer}>
-        {property.photos && property.photos.length > 0 ? (
-          <Image source={{ uri: property.photos[0] }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.placeholderImage]}>
-            <Ionicons name="home-outline" size={64} color="#ccc" />
-          </View>
-        )}
-        
-        {/* Match Score Badge */}
-        {property.matchScore && (
+    <TouchableOpacity style={styles.card} activeOpacity={0.98} onPress={onPress}>
+      {/* Full-screen Property Image with Gradient Overlay */}
+      <ImageBackground
+        source={{ uri: property.photos?.[0] || 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800' }}
+        style={styles.cardImage}
+        imageStyle={styles.cardImageStyle}
+      >
+        {/* Match Score Badge - Top Right */}
+        {property.matchScore ? (
           <View style={styles.matchBadge}>
             <Text style={styles.matchScore}>{property.matchScore}%</Text>
             <Text style={styles.matchLabel}>Match</Text>
           </View>
-        )}
-      </View>
+        ) : null}
 
-      {/* Property Details */}
-      <View style={styles.cardContent}>
-        <View style={styles.priceRow}>
-          <Text style={styles.rent}>₹{property.rent.toLocaleString()}/mo</Text>
-          {property.commuteTime && (
-            <View style={styles.commuteTag}>
-              <Ionicons name="car-outline" size={14} color="#666" />
-              <Text style={styles.commuteText}>{property.commuteTime} min</Text>
-            </View>
-          )}
-        </View>
-
-        <Text style={styles.configuration}>{property.configuration.toUpperCase()}</Text>
-        <Text style={styles.address} numberOfLines={2}>
-          {property.address}
-        </Text>
-
-        {property.matchReason && (
-          <Text style={styles.matchReason} numberOfLines={1}>
-            💡 {property.matchReason}
-          </Text>
+        {/* Swipes Remaining - Top Left */}
+        {stats && (
+          <View style={styles.swipesBadge}>
+            <Text style={styles.swipesBadgeText}>{stats.todayRemaining} left</Text>
+          </View>
         )}
 
-        {/* Amenities */}
-        <View style={styles.amenitiesRow}>
-          {property.amenities.slice(0, 3).map((amenity, index) => (
-            <View key={index} style={styles.amenityTag}>
-              <Text style={styles.amenityText}>{amenity}</Text>
+        {/* Gradient Overlay for Text Readability */}
+        <View style={styles.gradientOverlay} />
+
+        {/* Property Details Overlay - Bottom */}
+        <View style={styles.cardContent}>
+          <View style={styles.priceRow}>
+            <Text style={styles.rent}>₹{(property.rent || 0).toLocaleString()}</Text>
+            <Text style={styles.rentPeriod}>/month</Text>
+          </View>
+
+          <View style={styles.configRow}>
+            <View style={styles.configBadge}>
+              <Text style={styles.configText}>{configuration.toUpperCase()}</Text>
             </View>
-          ))}
-          {property.amenities.length > 3 && (
-            <Text style={styles.moreAmenities}>+{property.amenities.length - 3} more</Text>
-          )}
+            {property.furnishing && (
+              <View style={styles.furnishingBadge}>
+                <Text style={styles.furnishingText}>{property.furnishing}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.locationRow}>
+            <Ionicons name="location" size={16} color="#fff" />
+            <Text style={styles.address} numberOfLines={1}>
+              {neighborhood ? `${neighborhood}, ` : ''}{address}
+            </Text>
+          </View>
+
+          {property.matchReason ? (
+            <View style={styles.matchReasonContainer}>
+              <Text style={styles.matchReason} numberOfLines={1}>
+                💡 {property.matchReason}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Amenities */}
+          <View style={styles.amenitiesRow}>
+            {amenities.slice(0, 3).map((amenity, index) => (
+              <View key={index} style={styles.amenityTag}>
+                <Text style={styles.amenityText}>{amenity.replace('_', ' ')}</Text>
+              </View>
+            ))}
+            {amenities.length > 3 ? (
+              <View style={styles.amenityTag}>
+                <Text style={styles.amenityText}>+{amenities.length - 3}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
+      </ImageBackground>
     </TouchableOpacity>
   );
 };
@@ -329,7 +335,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
   },
   loadingContainer: {
     flex: 1,
@@ -374,198 +380,197 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#6366f1',
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#ef4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
   swiperContainer: {
     flex: 1,
-    paddingTop: 20,
   },
   card: {
-    height: SCREEN_HEIGHT * 0.65,
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  imageContainer: {
-    height: '60%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    flex: 1,
+    borderRadius: 20,
     overflow: 'hidden',
-    position: 'relative',
+    backgroundColor: '#1a1a1a',
   },
-  image: {
-    width: '100%',
-    height: '100%',
+  cardImage: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  placeholderImage: {
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+  cardImageStyle: {
+    borderRadius: 20,
+  },
+  gradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    borderRadius: 20,
+    // Gradient effect using multiple layers
+    backgroundImage: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.8) 100%)',
   },
   matchBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 20,
+    right: 20,
     backgroundColor: '#10b981',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   matchScore: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
   },
   matchLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: '#fff',
     marginTop: -2,
   },
+  swipesBadge: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  swipesBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
   cardContent: {
-    flex: 1,
-    padding: 16,
+    padding: 24,
+    paddingBottom: 140,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   priceRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'baseline',
+    marginBottom: 8,
   },
   rent: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#fff',
   },
-  commuteTag: {
+  rentPeriod: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    marginLeft: 4,
+  },
+  configRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 8,
+    marginBottom: 10,
+    gap: 8,
+  },
+  configBadge: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  commuteText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-  },
-  configuration: {
+  configText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6366f1',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  furnishingBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  furnishingText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#fff',
+    textTransform: 'capitalize',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   address: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 8,
+    fontSize: 15,
+    color: '#fff',
+    marginLeft: 6,
+    flex: 1,
+  },
+  matchReasonContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 12,
   },
   matchReason: {
-    fontSize: 13,
-    color: '#10b981',
+    fontSize: 14,
+    color: '#fff',
     fontWeight: '500',
-    marginBottom: 12,
   },
   amenitiesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
+    gap: 8,
   },
   amenityTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   amenityText: {
     fontSize: 12,
-    color: '#666',
-  },
-  moreAmenities: {
-    fontSize: 12,
-    color: '#999',
+    color: '#fff',
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   actionsContainer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
     paddingHorizontal: 40,
   },
   actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginHorizontal: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    marginHorizontal: 16,
   },
   passButton: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#ef4444',
   },
   superButton: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#3b82f6',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   likeButton: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#10b981',
-  },
-  statsContainer: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  statsText: {
-    fontSize: 12,
-    color: '#999',
   },
 });

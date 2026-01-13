@@ -55,14 +55,20 @@ class AuthService {
    * Verify OTP and login
    */
   async verifyOTP(phone: string, otp: string): Promise<AuthResponse> {
+    console.log('📱 AuthService.verifyOTP called:', { phone, otp });
+    
     const response = await apiClient.post<AuthResponse>('/api/auth/verify-otp', {
       phone,
       otp,
     });
 
+    console.log('📱 AuthService.verifyOTP response:', response);
+
     // Store tokens and user data
     if (response.success) {
+      console.log('📱 Storing auth data...');
       await this.storeAuthData(response.data.user, response.data.tokens);
+      console.log('📱 Auth data stored successfully');
     }
 
     return response;

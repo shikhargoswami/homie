@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "noEmit": true
+  },
+  "include": ["src/**/*", "src/**/*.test.ts", "jest.setup.ts", "jest.teardown.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,18 +1,25 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import { pgPool, redisClient, checkDatabaseConnection } from './database/client';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
 import { analyticsMiddleware } from './middleware/analytics';
+import { initializeSocketIO } from './services/chat.service';
 
 // Import routes
 import authRoutes from './routes/auth';
 import matchingRoutes from './routes/matching';
+import chatRoutes from './routes/chat';
+import propertyRoutes, { landlordRoutes } from './routes/properties';
+import viewingRoutes, { tenantViewingRoutes, landlordViewingRoutes } from './routes/viewings';
+import usersRoutes from './routes/users';
 
 dotenv.config();
 
 const app: Express = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -64,6 +71,12 @@ app.get('/', (req: Request, res: Response) => {
       health: '/health',
       auth: '/api/auth',
       matching: '/api/matches',
+      chat: '/api/chat',
+      properties: '/api/properties',
+      viewings: '/api/viewings',
+      landlord: '/api/landlord',
+      tenant: '/api/tenant',
+      users: '/api/users',
     },
   });
 });
@@ -71,6 +84,15 @@ app.get('/', (req: Request, res: Response) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchingRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/properties', propertyRoutes);
+app.use('/api/viewings', viewingRoutes);
+app.use('/api/users', usersRoutes);
+
+// Role-specific routes
+app.use('/api/landlord', landlordRoutes);
+app.use('/api/landlord', landlordViewingRoutes);
+app.use('/api/tenant', tenantViewingRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -103,12 +125,17 @@ const startServer = async () => {
       console.error('❌ PostgreSQL connection failed');
       process.exit(1);
     }
+
+    // Initialize Socket.IO for real-time chat
+    const io = initializeSocketIO(httpServer);
+    console.log('✅ Socket.IO initialized');
     
     // Start listening
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`API URL: http://localhost:${PORT}`);
+      console.log(`WebSocket: ws://localhost:${PORT}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

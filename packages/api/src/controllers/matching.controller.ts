@@ -171,7 +171,7 @@ export const recordSwipe = async (
         [tenantId, propertyId]
       );
       
-      if (matchResult.rowCount > 0) {
+      if (matchResult.rowCount && matchResult.rowCount > 0) {
         const match = matchResult.rows[0];
         
         // Check if landlord also swiped right (we'll implement landlord swipe later)

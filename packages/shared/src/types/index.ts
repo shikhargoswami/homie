@@ -387,23 +387,6 @@ export interface MatchScore {
   };
 }
 
-export interface PropertyRecommendation {
-  propertyId: string;
-  matchScore: number;
-  matchReason: string;
-  commuteTime?: number; // minutes
-}
-
-// Constants
-export const OTP_EXPIRY_SECONDS = 600; // 10 minutes
-export const OTP_MAX_ATTEMPTS = 3;
-export const MATCH_THRESHOLD = 60; // Minimum score to show property
-export const MAX_DAILY_SWIPES = 50; // Free tier limit
-
-// ============================================
-// MATCHING TYPES
-// ============================================
-
 export interface MatchPreferences {
   nonNegotiables: {
     budget: { min: number; max: number };
@@ -445,9 +428,3 @@ export interface PropertyRecommendation {
   matchReason: string;
   commuteTime?: number; // minutes
 }
-
-// Constants
-export const OTP_EXPIRY_SECONDS = 600; // 10 minutes
-export const OTP_MAX_ATTEMPTS = 3;
-export const MATCH_THRESHOLD = 60; // Minimum score to show property
-export const MAX_DAILY_SWIPES = 50; // Free tier limit

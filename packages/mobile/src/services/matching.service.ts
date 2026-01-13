@@ -29,6 +29,7 @@ export interface Property {
   rent: number;
   security_deposit: number;
   maintenance_charge: number;
+  min_lease_duration?: number;
   amenities: string[];
   photos: string[];
   vr_tour_url?: string;

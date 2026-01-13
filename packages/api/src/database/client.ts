@@ -175,3 +175,6 @@ export const closeConnections = async () => {
   await redisClient.quit();
   console.log('✅ All database connections closed');
 };
+
+// Alias for convenience
+export const pool = pgPool;

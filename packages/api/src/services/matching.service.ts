@@ -46,7 +46,47 @@ class MatchingService {
     const preferences = await this.getTenantPreferences(tenantId);
     
     if (!preferences) {
-      throw new Error('Tenant preferences not found');
+      // No preferences set - return empty array with a note
+      // User needs to complete their profile/preferences first
+      console.log(`⚠️ No preferences found for tenant ${tenantId}, using default preferences`);
+      
+      // Use default preferences for new users so they can see some properties
+      const defaultPreferences: MatchPreferences = {
+        nonNegotiables: {
+          budget: { min: 5000, max: 100000 },
+          location: '', // Any location
+          bhkType: ['1bhk', '2bhk', '3bhk'],
+          furnishing: 'any',
+          moveInDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        },
+        mustHaves: {
+          amenities: [],
+        },
+        niceToHaves: {
+          petFriendly: false,
+          balconyPreference: false,
+        },
+      };
+      
+      // Continue with default preferences
+      const candidates = await this.filterByRules(defaultPreferences);
+      
+      if (candidates.length === 0) {
+        return [];
+      }
+      
+      // Return top properties by recency (no scoring since no preferences)
+      const recommendations = candidates.slice(0, limit).map(p => ({
+        propertyId: p.id,
+        matchScore: 70, // Default score
+        matchReason: 'New listing in your area',
+        commuteTime: undefined,
+      }));
+      
+      // Cache for shorter time (15 min) since these are defaults
+      await redisClient.setEx(cacheKey, 900, JSON.stringify(recommendations));
+      
+      return recommendations;
     }
     
     // STEP 1: Rule-based filtering (hard constraints)
@@ -125,7 +165,15 @@ class MatchingService {
   private async filterByRules(preferences: MatchPreferences): Promise<any[]> {
     const { nonNegotiables } = preferences;
     
+    // Handle missing or incomplete preferences gracefully
+    const budget = nonNegotiables?.budget || { min: 5000, max: 200000 };
+    const location = nonNegotiables?.location || '';
+    const bhkType = nonNegotiables?.bhkType || ['1bhk', '2bhk', '3bhk', '4bhk+'];
+    const furnishing = nonNegotiables?.furnishing || 'any';
+    const moveInDate = nonNegotiables?.moveInDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
     // Build dynamic SQL query
+    // Location filter checks neighborhood, address, OR city
     const result = await query(
       `SELECT 
         p.*,
@@ -138,18 +186,18 @@ class MatchingService {
          AND p.rent >= $1
          AND p.rent <= $2
          AND p.configuration = ANY($3)
-         AND p.neighborhood ILIKE $4
+         AND (p.neighborhood ILIKE $4 OR p.address ILIKE $4 OR p.city ILIKE $4 OR $4 = '%%')
          AND (p.furnishing = $5 OR $5 = 'any')
          AND p.available_from <= $6
        ORDER BY p.created_at DESC
        LIMIT 100`,
       [
-        nonNegotiables.budget.min,
-        nonNegotiables.budget.max,
-        nonNegotiables.bhkType,
-        `%${nonNegotiables.location}%`,
-        nonNegotiables.furnishing,
-        nonNegotiables.moveInDate,
+        budget.min,
+        budget.max,
+        bhkType,
+        `%${location}%`,
+        furnishing,
+        moveInDate,
       ]
     );
     
@@ -176,12 +224,19 @@ class MatchingService {
     property: any,
     preferences: MatchPreferences
   ): Promise<MatchScore> {
+    // Handle missing preferences gracefully
+    const budget = preferences.nonNegotiables?.budget || { min: 5000, max: 200000 };
+    const location = preferences.nonNegotiables?.location || '';
+    const amenities = preferences.mustHaves?.amenities || [];
+    const niceToHaves = preferences.niceToHaves || {};
+    const mustHaves = preferences.mustHaves || {};
+
     const breakdown = {
-      budgetMatch: this.scoreBudgetMatch(property.rent, preferences.nonNegotiables.budget),
-      locationMatch: this.scoreLocationMatch(property.neighborhood, preferences.nonNegotiables.location),
-      amenitiesMatch: this.scoreAmenitiesMatch(property.amenities, preferences.mustHaves.amenities),
-      vibeMatch: this.scoreVibeMatch(property.features, preferences.niceToHaves),
-      commuteMatch: await this.scoreCommuteMatch(property, preferences.mustHaves),
+      budgetMatch: this.scoreBudgetMatch(property.rent, budget),
+      locationMatch: this.scoreLocationMatch(property.neighborhood, location),
+      amenitiesMatch: this.scoreAmenitiesMatch(property.amenities, amenities),
+      vibeMatch: this.scoreVibeMatch(property.features, niceToHaves),
+      commuteMatch: await this.scoreCommuteMatch(property, mustHaves),
     };
     
     const totalScore = Object.values(breakdown).reduce((sum, score) => sum + score, 0);
@@ -495,7 +550,7 @@ class MatchingService {
       [tenantId, propertyId]
     );
     
-    if (existingMatch.rowCount > 0) {
+    if (existingMatch.rowCount && existingMatch.rowCount > 0) {
       // Update existing match
       await query(
         `UPDATE matches 
