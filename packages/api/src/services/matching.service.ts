@@ -143,7 +143,7 @@ class MatchingService {
    */
   private async getTenantPreferences(tenantId: string): Promise<MatchPreferences | null> {
     const result = await query(
-      `SELECT preferences FROM tenant_profiles WHERE user_id = $1`,
+      `SELECT budget_min, budget_max, preferences FROM tenant_profiles WHERE user_id = $1`,
       [tenantId]
     );
     
@@ -151,7 +151,30 @@ class MatchingService {
       return null;
     }
     
-    return result.rows[0].preferences as MatchPreferences;
+    // Transform database format to MatchPreferences format
+    const row = result.rows[0];
+    const prefs = row.preferences || {};
+    
+    return {
+      nonNegotiables: {
+        budget: {
+          min: row.budget_min || 5000,
+          max: row.budget_max || 100000,
+        },
+        location: prefs.preferred_locations?.[0] || '',
+        bhkType: prefs.preferred_configuration ? [prefs.preferred_configuration] : ['1bhk', '2bhk', '3bhk'],
+        furnishing: prefs.preferred_furnishing || 'any',
+        moveInDate: prefs.move_in_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      },
+      mustHaves: {
+        amenities: prefs.preferred_amenities || [],
+        workLocation: prefs.workplace_location || undefined,
+      },
+      niceToHaves: {
+        pets: prefs.pets_allowed ?? false,
+        smoking: prefs.smoking_allowed ?? false,
+      },
+    } as MatchPreferences;
   }
   
   /**
@@ -421,7 +444,7 @@ class MatchingService {
     property: any,
     preferences: MatchPreferences
   ): Promise<number> {
-    if (!preferences.mustHaves.workLocation) return 0;
+    if (!preferences.mustHaves?.workLocation) return 0;
     
     return calculateCommuteTime(
       { lat: property.latitude, lng: property.longitude },

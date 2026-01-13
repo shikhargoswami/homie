@@ -80,6 +80,20 @@ class MatchingService {
       '/api/matches/recommendations',
       { limit }
     );
+    
+    // DEBUG: Log first property to check photos
+    if (response.data.properties.length > 0) {
+      const firstProperty = response.data.properties[0];
+      console.log('🔍 First property from API:', {
+        id: firstProperty.id,
+        config: firstProperty.configuration,
+        photosType: typeof firstProperty.photos,
+        photosIsArray: Array.isArray(firstProperty.photos),
+        photosLength: firstProperty.photos?.length,
+        photos: firstProperty.photos,
+      });
+    }
+    
     return response.data.properties;
   }
 

@@ -386,7 +386,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 32000,
       deposit: 64000,
       amenities: ['gym', 'swimming_pool', 'parking', '24/7 security', 'power_backup', 'lift'],
-      photos: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800', // Living room
+        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800', // Bedroom
+        'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800', // Kitchen
+        'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800', // Bathroom
+      ],
     },
     {
       address: 'Green Valley Apartments, Indiranagar',
@@ -402,7 +407,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 55000,
       deposit: 110000,
       amenities: ['gym', 'swimming_pool', 'club_house', 'parking', '24/7 security', 'children_play_area'],
-      photos: ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800', // Bedroom
+        'https://images.unsplash.com/photo-1615529182904-14819c35db37?w=800', // Living room
+        'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800', // Dining area
+        'https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=800', // Balcony
+      ],
     },
     {
       address: 'Tech Park Residency, Whitefield',
@@ -418,7 +428,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 28000,
       deposit: 56000,
       amenities: ['gym', 'parking', '24/7 security', 'power_backup'],
-      photos: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800', // Living room
+        'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800', // Bedroom
+        'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800', // Kitchen
+        'https://images.unsplash.com/photo-1507652955-f3dcef5a3be5?w=800', // View
+      ],
     },
     {
       address: 'Lake View Villa, HSR Layout',
@@ -434,7 +449,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 85000,
       deposit: 170000,
       amenities: ['private_garden', 'parking', 'terrace', 'home_office', 'power_backup'],
-      photos: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800', // Master bedroom
+        'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800', // Living room
+        'https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=800', // Dining
+        'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800', // Terrace
+      ],
     },
     {
       address: 'Metro View Apartments, Electronic City',
@@ -450,7 +470,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 15000,
       deposit: 30000,
       amenities: ['parking', '24/7 security', 'power_backup'],
-      photos: ['https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800', // Living area
+        'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800', // Bedroom
+        'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800', // Kitchen
+        'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800', // Compact space
+      ],
     },
     // Properties for room sharing / PG
     {
@@ -467,7 +492,11 @@ const seedProperties = async (client: PoolClient) => {
       rent: 12000,
       deposit: 12000,
       amenities: ['wifi', 'housekeeping', 'meals', 'laundry', 'common_area'],
-      photos: ['https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800', // Modern living
+        'https://images.unsplash.com/photo-1505693314120-0d443867891c?w=800', // Bedroom suite
+        'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800', // Open kitchen
+      ],
       tenantPrefs: { genderPreference: 'male', maxOccupants: 1 },
     },
     {
@@ -484,7 +513,11 @@ const seedProperties = async (client: PoolClient) => {
       rent: 9000,
       deposit: 9000,
       amenities: ['wifi', 'housekeeping', 'common_kitchen', 'laundry'],
-      photos: ['https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800', // Living room
+        'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800', // Bedroom
+        'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800', // Bathroom
+      ],
       tenantPrefs: { genderPreference: 'female', maxOccupants: 1 },
     },
     {
@@ -501,7 +534,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 10500,
       deposit: 10500,
       amenities: ['wifi', 'gym', 'housekeeping', 'meals', 'common_area', 'game_room'],
-      photos: ['https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=800', // Modern room
+        'https://images.unsplash.com/photo-1571055107559-3e67626fa8be?w=800', // Living space
+        'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800', // Kitchen
+        'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800', // Study area
+      ],
       tenantPrefs: { genderPreference: 'any', maxOccupants: 2 },
     },
     {
@@ -518,7 +556,11 @@ const seedProperties = async (client: PoolClient) => {
       rent: 14000,
       deposit: 14000,
       amenities: ['wifi', 'ac', 'gym', 'housekeeping', 'meals', 'power_backup'],
-      photos: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800', // Villa exterior
+        'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800', // Interior
+        'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800', // Garden view
+      ],
       tenantPrefs: { genderPreference: 'male', maxOccupants: 1 },
     },
     {
@@ -535,7 +577,12 @@ const seedProperties = async (client: PoolClient) => {
       rent: 8500,
       deposit: 8500,
       amenities: ['wifi', 'housekeeping', 'common_kitchen', 'laundry', 'study_room'],
-      photos: ['https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800'],
+      photos: [
+        'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800', // Cozy room
+        'https://images.unsplash.com/photo-1556912173-46c336c7fd55?w=800', // Living area
+        'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800', // Modern bathroom
+        'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800', // Kitchen
+      ],
       tenantPrefs: { genderPreference: 'any', maxOccupants: 1 },
     },
   ];

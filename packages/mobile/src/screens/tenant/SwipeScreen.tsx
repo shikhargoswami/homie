@@ -8,11 +8,17 @@ import {
   ActivityIndicator,
   Alert,
   ImageBackground,
+  Animated,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecommendations, useSwipe, useMatchStats } from '@hooks/useMatching';
 import { Property } from '@services/matching.service';
+
+// Create animated version of ImageBackground for smooth photo transitions
+const AnimatedImageBackground = Animated.createAnimatedComponent(ImageBackground);
 
 /**
  * Swipe Screen (Tinder-style)
@@ -124,11 +130,12 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
         <Swiper
           ref={swiperRef}
           cards={properties}
-          renderCard={(property) => (
+          renderCard={(property, cardIndex) => (
             <PropertyCard 
               property={property} 
               onPress={() => handleCardPress(property)}
               stats={stats}
+              isActive={cardIndex === currentIndex}
             />
           )}
           onSwipedLeft={handleSwipeLeft}
@@ -206,33 +213,42 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
           animateCardOpacity
           onTapCard={(index) => handleCardPress(properties[index])}
         />
-      </View>
 
-      {/* Floating Action Buttons */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.passButton]}
-          onPress={() => swiperRef.current?.swipeLeft()}
-          disabled={isSwiping}
-        >
-          <Ionicons name="close" size={36} color="#ef4444" />
-        </TouchableOpacity>
+        {/* Floating Action Buttons - Overlaying the Card */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.passButton]}
+            onPress={() => swiperRef.current?.swipeLeft()}
+            disabled={isSwiping}
+            activeOpacity={0.7}
+          >
+            <View style={styles.passButtonInner}>
+              <Ionicons name="close" size={32} color="#fff" />
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.superButton]}
-          onPress={() => swiperRef.current?.swipeTop()}
-          disabled={isSwiping}
-        >
-          <Ionicons name="star" size={30} color="#3b82f6" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.superButton]}
+            onPress={() => swiperRef.current?.swipeTop()}
+            disabled={isSwiping}
+            activeOpacity={0.7}
+          >
+            <View style={styles.superButtonInner}>
+              <Ionicons name="star" size={28} color="#fff" />
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => swiperRef.current?.swipeRight()}
-          disabled={isSwiping}
-        >
-          <Ionicons name="heart" size={36} color="#10b981" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.likeButton]}
+            onPress={() => swiperRef.current?.swipeRight()}
+            disabled={isSwiping}
+            activeOpacity={0.7}
+          >
+            <View style={styles.likeButtonInner}>
+              <Ionicons name="heart" size={32} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -240,28 +256,139 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
 
 /**
  * Property Card Component - Full Screen Immersive Design
+ * 
+ * Features:
+ * - Auto-cycling photos: Images automatically rotate every 3 seconds
+ * - Shows all 3-4 property images in sequence while viewing card
+ * - Photo indicators: Dots at top showing current photo (Instagram Stories style)
+ * - Photo counter: Shows "2/4" in top-right corner
+ * - Centered content layout with semi-transparent backdrops
+ * - Increases engagement time per card
  */
 interface PropertyCardProps {
   property: Property;
   onPress: () => void;
   stats?: any;
+  isActive?: boolean; // Track if card is currently visible
 }
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress, stats }) => {
+const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress, stats, isActive = false }) => {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState(0);
+  const [nextPhotoIndex, setNextPhotoIndex] = React.useState(1);
+  const fadeAnim1 = React.useRef(new Animated.Value(1)).current; // Current photo
+  const fadeAnim2 = React.useRef(new Animated.Value(0)).current; // Next photo
+  const photoIndexRef = React.useRef(0); // Track index without re-renders
+  const isAnimatingRef = React.useRef(false); // Prevent overlapping animations
+  
+  // Early return if property is undefined
+  if (!property) {
+    return (
+      <View style={styles.card}>
+        <View style={[styles.cardImage, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#6C5CE7" />
+        </View>
+      </View>
+    );
+  }
+  
   // Safely handle potentially null/undefined values
   const amenities = property.amenities || [];
   const configuration = property.configuration || 'N/A';
   const address = property.address || 'Address not available';
   const neighborhood = property.neighborhood || '';
   
+  // Get photos array with fallback
+  const photos = property.photos && property.photos.length > 0 
+    ? property.photos 
+    : ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800'];
+  
+  const totalPhotos = photos.length;
+  
+  // DEBUG: Log property photos on mount
+  React.useEffect(() => {
+    console.log(`🏠 Property ${property.id} loaded with:`, {
+      photosArray: property.photos,
+      photosCount: property.photos?.length,
+      totalPhotos,
+      photos: photos.slice(0, 2), // Show first 2 URLs
+    });
+  }, [property.id]);
+  
+  // Auto-cycle through photos every 5 seconds with crossfade animation
+  React.useEffect(() => {
+    // Only run animation if this card is active/visible
+    if (!isActive || totalPhotos <= 1) {
+      return; // Don't cycle if not active or only one photo
+    }
+    
+    const interval = setInterval(() => {
+      // Skip if animation already running
+      if (isAnimatingRef.current) {
+        return;
+      }
+      
+      const currentIdx = photoIndexRef.current;
+      const nextIdx = (currentIdx + 1) % totalPhotos;
+      
+      isAnimatingRef.current = true;
+      
+      // Set next photo for the second layer
+      setNextPhotoIndex(nextIdx);
+      
+      // Wait for image to load, then crossfade
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(fadeAnim1, {
+            toValue: 0,
+            duration: 1500, // Slow 1.5 second fade out
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim2, {
+            toValue: 1,
+            duration: 1500, // Slow 1.5 second fade in
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // After crossfade, update to next photo
+          photoIndexRef.current = nextIdx;
+          setCurrentPhotoIndex(nextIdx);
+          
+          // Reset animations for next cycle
+          fadeAnim1.setValue(1);
+          fadeAnim2.setValue(0);
+          
+          // Animation complete
+          isAnimatingRef.current = false;
+        });
+      }, 100);
+    }, 5000); // Change photo every 5 seconds (longer viewing time)
+    
+    return () => {
+      clearInterval(interval);
+      isAnimatingRef.current = false;
+    };
+  }, [totalPhotos, property.id, fadeAnim1, fadeAnim2, isActive]);
+  
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.98} onPress={onPress}>
-      {/* Full-screen Property Image with Gradient Overlay */}
-      <ImageBackground
-        source={{ uri: property.photos?.[0] || 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800' }}
-        style={styles.cardImage}
-        imageStyle={styles.cardImageStyle}
-      >
+      {/* Background Image Layers with Crossfade */}
+      {/* Base layer - current photo */}
+      <Animated.Image
+        source={{ uri: photos[currentPhotoIndex] }}
+        style={[StyleSheet.absoluteFill, styles.cardImageStyle, { opacity: fadeAnim1 }]}
+        resizeMode="cover"
+      />
+      {/* Top layer - next photo (fades in during transition) */}
+      {totalPhotos > 1 && (
+        <Animated.Image
+          source={{ uri: photos[nextPhotoIndex] }}
+          style={[StyleSheet.absoluteFill, styles.cardImageStyle, { opacity: fadeAnim2 }]}
+          resizeMode="cover"
+        />
+      )}
+      
+      {/* Content Overlay (stays visible) */}
+      <View style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end' }]}>
         {/* Match Score Badge - Top Right */}
         {property.matchScore ? (
           <View style={styles.matchBadge}>
@@ -277,57 +404,87 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress, stats })
           </View>
         )}
 
-        {/* Gradient Overlay for Text Readability */}
-        <View style={styles.gradientOverlay} />
+        {/* Photo Indicators - Top Center */}
+        {totalPhotos > 1 && (
+          <View style={styles.photoIndicators}>
+            {photos.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.photoIndicator,
+                  index === currentPhotoIndex && styles.photoIndicatorActive,
+                ]}
+              />
+            ))}
+          </View>
+        )}
 
-        {/* Property Details Overlay - Bottom */}
+        {/* Photo Counter Badge - Top Right (below match badge if exists) */}
+        {totalPhotos > 1 && (
+          <View style={[
+            styles.photoCounter,
+            property.matchScore && { top: 80 }
+          ]}>
+            <Ionicons name="images" size={14} color="#fff" />
+            <Text style={styles.photoCounterText}>
+              {currentPhotoIndex + 1}/{totalPhotos}
+            </Text>
+          </View>
+        )}
+
+        {/* Center Gradient Overlay - Subtle vignette effect */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.2)', 'transparent', 'rgba(0,0,0,0.3)']}
+          locations={[0, 0.5, 1]}
+          style={styles.gradientOverlay}
+        />
+
+        {/* Property Details - Center Overlay with Blend Effect */}
         <View style={styles.cardContent}>
-          <View style={styles.priceRow}>
+          {/* Price - Large and prominent */}
+          <View style={styles.priceContainer}>
+            <View style={styles.priceBackdrop} />
             <Text style={styles.rent}>₹{(property.rent || 0).toLocaleString()}</Text>
             <Text style={styles.rentPeriod}>/month</Text>
           </View>
 
-          <View style={styles.configRow}>
-            <View style={styles.configBadge}>
-              <Text style={styles.configText}>{configuration.toUpperCase()}</Text>
-            </View>
-            {property.furnishing && (
-              <View style={styles.furnishingBadge}>
-                <Text style={styles.furnishingText}>{property.furnishing}</Text>
+          {/* Config - Below price */}
+          <View style={styles.configContainer}>
+            <View style={styles.infoBackdrop} />
+            <View style={styles.configRow}>
+              <View style={styles.configBadge}>
+                <Text style={styles.configText}>{configuration.toUpperCase()}</Text>
               </View>
-            )}
+              {property.furnishing && (
+                <View style={styles.furnishingBadge}>
+                  <Text style={styles.furnishingText}>{property.furnishing}</Text>
+                </View>
+              )}
+            </View>
           </View>
 
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={16} color="#fff" />
-            <Text style={styles.address} numberOfLines={1}>
-              {neighborhood ? `${neighborhood}, ` : ''}{address}
-            </Text>
+          {/* Location - Below config */}
+          <View style={styles.locationContainer}>
+            <View style={styles.infoBackdrop} />
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={18} color="#fff" />
+              <Text style={styles.address} numberOfLines={2}>
+                {neighborhood ? `${neighborhood}, ` : ''}{address}
+              </Text>
+            </View>
           </View>
 
+          {/* Match Reason - Bottom */}
           {property.matchReason ? (
-            <View style={styles.matchReasonContainer}>
-              <Text style={styles.matchReason} numberOfLines={1}>
+            <View style={styles.matchReasonWrapper}>
+              <View style={styles.matchReasonBackdrop} />
+              <Text style={styles.matchReason} numberOfLines={2}>
                 💡 {property.matchReason}
               </Text>
             </View>
           ) : null}
-
-          {/* Amenities */}
-          <View style={styles.amenitiesRow}>
-            {amenities.slice(0, 3).map((amenity, index) => (
-              <View key={index} style={styles.amenityTag}>
-                <Text style={styles.amenityText}>{amenity.replace('_', ' ')}</Text>
-              </View>
-            ))}
-            {amenities.length > 3 ? (
-              <View style={styles.amenityTag}>
-                <Text style={styles.amenityText}>+{amenities.length - 3}</Text>
-              </View>
-            ) : null}
-          </View>
         </View>
-      </ImageBackground>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -382,6 +539,7 @@ const styles = StyleSheet.create({
   },
   swiperContainer: {
     flex: 1,
+    position: 'relative',
   },
   card: {
     flex: 1,
@@ -398,138 +556,238 @@ const styles = StyleSheet.create({
   },
   gradientOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
     borderRadius: 20,
-    // Gradient effect using multiple layers
-    backgroundImage: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.8) 100%)',
   },
   matchBadge: {
     position: 'absolute',
-    top: 20,
-    right: 20,
+    top: 16,
+    right: 16,
     backgroundColor: '#10b981',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 12,
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   matchScore: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '900',
     color: '#fff',
+    letterSpacing: -0.5,
   },
   matchLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#fff',
     marginTop: -2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   swipesBadge: {
     position: 'absolute',
-    top: 20,
-    left: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backdropFilter: 'blur(10px)',
   },
   swipesBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.3,
+  },
+  photoIndicators: {
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+  },
+  photoIndicator: {
+    height: 3,
+    flex: 1,
+    maxWidth: 60,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 2,
+  },
+  photoIndicatorActive: {
+    backgroundColor: '#fff',
+  },
+  photoCounter: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  photoCounterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
   cardContent: {
-    padding: 24,
-    paddingBottom: 140,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    position: 'absolute',
+    top: '25%',
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 16,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 8,
+  priceContainer: {
+    alignItems: 'center',
+    position: 'relative',
+  },
+  priceBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    marginHorizontal: -20,
+    marginVertical: -8,
+  },
+  configContainer: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  locationContainer: {
+    position: 'relative',
+    width: '100%',
+    alignItems: 'center',
+  },
+  infoBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+    marginHorizontal: -16,
+    marginVertical: -8,
+  },
+  matchReasonWrapper: {
+    position: 'relative',
+    width: '100%',
+    alignItems: 'center',
+  },
+  matchReasonBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    borderRadius: 12,
+    marginHorizontal: -12,
+    marginVertical: -6,
   },
   rent: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 48,
+    fontWeight: '900',
     color: '#fff',
+    letterSpacing: -1.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 12,
+    textAlign: 'center',
   },
   rentPeriod: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginLeft: 4,
+    color: 'rgba(255,255,255,0.95)',
+    marginTop: -4,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   configRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
+    justifyContent: 'center',
+    gap: 10,
   },
   configBadge: {
     backgroundColor: '#6366f1',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 10,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 4,
   },
   configText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: 0.5,
   },
   furnishingBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   furnishingText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#fff',
     textTransform: 'capitalize',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'center',
+    maxWidth: '90%',
   },
   address: {
     fontSize: 15,
     color: '#fff',
     marginLeft: 6,
-    flex: 1,
-  },
-  matchReasonContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginBottom: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   matchReason: {
     fontSize: 14,
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   amenitiesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   amenityTag: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   amenityText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
     fontWeight: '500',
     textTransform: 'capitalize',
@@ -542,35 +800,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
+    gap: 18,
+    zIndex: 10,
+    pointerEvents: 'box-none',
   },
   actionButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    marginHorizontal: 16,
   },
   passButton: {
-    borderWidth: 3,
-    borderColor: '#ef4444',
+    width: 64,
+    height: 64,
+  },
+  passButtonInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
   },
   superButton: {
-    borderWidth: 3,
-    borderColor: '#3b82f6',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 54,
+    height: 54,
+  },
+  superButtonInner: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
   },
   likeButton: {
-    borderWidth: 3,
-    borderColor: '#10b981',
+    width: 64,
+    height: 64,
+  },
+  likeButtonInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#10b981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
   },
 });

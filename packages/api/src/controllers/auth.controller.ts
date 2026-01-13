@@ -55,15 +55,19 @@ export const requestOTP = async (
     const cleanPhone = phone.replace(/\D/g, '');
     
     // Rate limiting: Check if user has requested OTP recently
+    // TODO: Reduce this to 3 in production for security
+    const MAX_OTP_REQUESTS = process.env.NODE_ENV === 'production' ? 3 : 50; // 50 for testing, 3 for production
+    const RATE_LIMIT_WINDOW = 3600; // 1 hour in seconds
+    
     const rateLimitKey = `otp:ratelimit:${cleanPhone}`;
     const recentRequests = await redisClient.get(rateLimitKey);
     
-    if (recentRequests && parseInt(recentRequests) >= 3) {
+    if (recentRequests && parseInt(recentRequests) >= MAX_OTP_REQUESTS) {
       res.status(429).json({
         success: false,
         error: {
           code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many OTP requests. Please try again in 1 hour.',
+          message: `Too many OTP requests. Please try again in 1 hour.`,
         },
       });
       return;
@@ -89,7 +93,7 @@ export const requestOTP = async (
     
     // Update rate limit counter
     const currentCount = recentRequests ? parseInt(recentRequests) : 0;
-    await redisClient.setEx(rateLimitKey, 3600, (currentCount + 1).toString()); // 1 hour TTL
+    await redisClient.setEx(rateLimitKey, RATE_LIMIT_WINDOW, (currentCount + 1).toString());
     
     // Send OTP via SMS (skipped in test mode)
     if (process.env.NODE_ENV === 'production') {

@@ -39,17 +39,10 @@ router.get('/preferences', async (req, res, next) => {
     if (role === 'tenant') {
       const prefResult = await query(
         `SELECT 
-          preferred_locations,
-          min_budget,
-          max_budget,
-          preferred_configuration,
-          preferred_furnishing,
-          preferred_amenities,
-          pets_allowed,
-          smoking_allowed,
-          min_lease_duration,
-          move_in_date,
-          workplace_location
+          search_type,
+          budget_min,
+          budget_max,
+          preferences
          FROM tenant_profiles
          WHERE user_id = $1`,
         [userId]
@@ -61,9 +54,10 @@ router.get('/preferences', async (req, res, next) => {
           success: true,
           data: {
             preferences: {
+              search_type: 'full_home',
+              budget_min: 10000,
+              budget_max: 50000,
               preferred_locations: [],
-              min_budget: 10000,
-              max_budget: 50000,
               preferred_configuration: '2bhk',
               preferred_furnishing: 'semi-furnished',
               preferred_amenities: [],
@@ -78,9 +72,18 @@ router.get('/preferences', async (req, res, next) => {
         return;
       }
 
+      // Merge preferences JSONB with budget fields
+      const prefs = prefResult.rows[0].preferences || {};
       res.status(200).json({
         success: true,
-        data: { preferences: prefResult.rows[0] },
+        data: {
+          preferences: {
+            search_type: prefResult.rows[0].search_type,
+            budget_min: prefResult.rows[0].budget_min,
+            budget_max: prefResult.rows[0].budget_max,
+            ...prefs,
+          },
+        },
       });
     } else if (role === 'landlord') {
       const prefResult = await query(
@@ -158,38 +161,33 @@ router.put('/preferences', async (req, res, next) => {
 
     if (role === 'tenant') {
       // Upsert tenant preferences
+      // Schema uses: search_type, budget_min, budget_max, preferences (JSONB)
       await query(
         `INSERT INTO tenant_profiles (
-          user_id, preferred_locations, min_budget, max_budget,
-          preferred_configuration, preferred_furnishing, preferred_amenities,
-          pets_allowed, smoking_allowed, min_lease_duration, move_in_date, workplace_location
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          user_id, search_type, budget_min, budget_max, preferences
+        ) VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (user_id) DO UPDATE SET
-          preferred_locations = COALESCE($2, tenant_profiles.preferred_locations),
-          min_budget = COALESCE($3, tenant_profiles.min_budget),
-          max_budget = COALESCE($4, tenant_profiles.max_budget),
-          preferred_configuration = COALESCE($5, tenant_profiles.preferred_configuration),
-          preferred_furnishing = COALESCE($6, tenant_profiles.preferred_furnishing),
-          preferred_amenities = COALESCE($7, tenant_profiles.preferred_amenities),
-          pets_allowed = COALESCE($8, tenant_profiles.pets_allowed),
-          smoking_allowed = COALESCE($9, tenant_profiles.smoking_allowed),
-          min_lease_duration = COALESCE($10, tenant_profiles.min_lease_duration),
-          move_in_date = COALESCE($11, tenant_profiles.move_in_date),
-          workplace_location = COALESCE($12, tenant_profiles.workplace_location),
+          search_type = COALESCE($2, tenant_profiles.search_type),
+          budget_min = COALESCE($3, tenant_profiles.budget_min),
+          budget_max = COALESCE($4, tenant_profiles.budget_max),
+          preferences = COALESCE($5, tenant_profiles.preferences),
           updated_at = NOW()`,
         [
           userId,
-          preferences.preferred_locations || [],
-          preferences.min_budget || 10000,
-          preferences.max_budget || 50000,
-          preferences.preferred_configuration || '2bhk',
-          preferences.preferred_furnishing || 'semi-furnished',
-          preferences.preferred_amenities || [],
-          preferences.pets_allowed ?? false,
-          preferences.smoking_allowed ?? false,
-          preferences.min_lease_duration || 11,
-          preferences.move_in_date || null,
-          preferences.workplace_location || null,
+          preferences.search_type || 'full_home',
+          preferences.budget_min || preferences.min_budget || 10000,
+          preferences.budget_max || preferences.max_budget || 50000,
+          JSON.stringify({
+            preferred_locations: preferences.preferred_locations || [],
+            preferred_configuration: preferences.preferred_configuration || '2bhk',
+            preferred_furnishing: preferences.preferred_furnishing || 'semi-furnished',
+            preferred_amenities: preferences.preferred_amenities || [],
+            pets_allowed: preferences.pets_allowed ?? false,
+            smoking_allowed: preferences.smoking_allowed ?? false,
+            min_lease_duration: preferences.min_lease_duration || 11,
+            move_in_date: preferences.move_in_date || null,
+            workplace_location: preferences.workplace_location || null,
+          }),
         ]
       );
 
