@@ -17,11 +17,16 @@ import Slider from '@react-native-community/slider';
 interface TenantPreferences {
   searchType: 'full_home' | 'room_sharing';
   name: string;
+  email: string;
   budgetMin: string;
   budgetMax: string;
   preferredLocations: string[];
   moveInDate: string;
   employmentStatus: 'employed' | 'self_employed' | 'student' | 'other';
+  // New: Work & Lifestyle preferences
+  workLocation?: string;
+  workMode?: 'office' | 'hybrid' | 'remote' | 'student';
+  lifestylePrefs?: string[];
   // Full home specific
   propertyType?: ('apartment' | 'house' | 'villa' | 'studio')[];
   configuration?: ('1bhk' | '2bhk' | '3bhk' | '4bhk+')[];
@@ -75,6 +80,40 @@ const LIFESTYLE_PREFERENCES = [
   { id: 'quiet', label: 'Quiet', icon: 'volume-mute' },
 ];
 
+// NEW: Enhanced Lifestyle Options (Key differentiation from competitors)
+const LIFESTYLE_OPTIONS = [
+  { id: 'has_pets', label: 'I have pets', icon: 'paw', color: '#f59e0b' },
+  { id: 'plays_music', label: 'I play instruments', icon: 'musical-notes', color: '#8b5cf6' },
+  { id: 'quiet_mornings', label: 'I need quiet mornings', icon: 'moon', color: '#6366f1' },
+  { id: 'natural_light', label: 'Natural light is important', icon: 'sunny', color: '#f97316' },
+  { id: 'gym_nearby', label: 'Gym nearby preferred', icon: 'fitness', color: '#ef4444' },
+  { id: 'cooks_frequently', label: 'I cook frequently', icon: 'restaurant', color: '#10b981' },
+  { id: 'nightlife', label: 'Nightlife nearby', icon: 'wine', color: '#ec4899' },
+  { id: 'wfh', label: 'I work from home', icon: 'laptop', color: '#3b82f6' },
+];
+
+// NEW: Work modes
+const WORK_MODES = [
+  { id: 'office', label: 'Work from Office', icon: 'business' },
+  { id: 'hybrid', label: 'Hybrid', icon: 'git-compare' },
+  { id: 'remote', label: 'Work from Home', icon: 'home' },
+  { id: 'student', label: 'Student', icon: 'school' },
+];
+
+// NEW: Popular office areas in Bangalore
+const POPULAR_WORK_LOCATIONS = [
+  'Manyata Tech Park',
+  'Electronic City',
+  'Whitefield Tech Park',
+  'Outer Ring Road',
+  'MG Road',
+  'Koramangala',
+  'HSR Layout',
+  'Indiranagar',
+  'Marathahalli',
+  'Bellandur',
+];
+
 export const TenantOnboardingScreen: React.FC<Props> = ({
   searchType,
   onComplete,
@@ -82,13 +121,30 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
   isLoading,
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = searchType === 'full_home' ? 4 : 5;
+  // Updated: Added 2 new steps (Work Details & Lifestyle)
+  const totalSteps = searchType === 'full_home' ? 6 : 7;
   
+  // Step 1: Basic Info
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  
+  // Step 2: Work Details (NEW)
+  const [workLocation, setWorkLocation] = useState('');
+  const [workMode, setWorkMode] = useState<'office' | 'hybrid' | 'remote' | 'student'>('office');
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  
+  // Step 3: Lifestyle Preferences (NEW)
+  const [lifestylePrefs, setLifestylePrefs] = useState<string[]>([]);
+  
+  // Step 4: Budget (was Step 2)
   const [budgetMin, setBudgetMin] = useState(15000);
   const [budgetMax, setBudgetMax] = useState(50000);
+  
+  // Step 5: Locations (was Step 3)
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [employmentStatus, setEmploymentStatus] = useState<'employed' | 'self_employed' | 'student' | 'other'>('employed');
+  
+  // Step 6: Property Preferences (was Step 4)
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [configurations, setConfigurations] = useState<string[]>([]);
   const [furnishing, setFurnishing] = useState<string[]>([]);
@@ -114,8 +170,28 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
           Alert.alert('Required', 'Please enter your name');
           return false;
         }
+        if (!email.trim()) {
+          Alert.alert('Required', 'Please enter your email');
+          return false;
+        }
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          Alert.alert('Invalid Email', 'Please enter a valid email address');
+          return false;
+        }
         return true;
       case 2:
+        // Work location is required unless remote
+        if (workMode !== 'remote' && !workLocation.trim()) {
+          Alert.alert('Required', 'Please enter your work/college location');
+          return false;
+        }
+        return true;
+      case 3:
+        // Lifestyle preferences are optional
+        return true;
+      case 4:
         if (budgetMin < 5000) {
           Alert.alert('Invalid Budget', 'Minimum budget should be at least ₹5,000');
           return false;
@@ -125,13 +201,13 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
           return false;
         }
         return true;
-      case 3:
+      case 5:
         if (selectedLocations.length === 0) {
           Alert.alert('Required', 'Please select at least one preferred location');
           return false;
         }
         return true;
-      case 4:
+      case 6:
         if (searchType === 'full_home') {
           if (propertyTypes.length === 0) {
             Alert.alert('Required', 'Please select at least one property type');
@@ -166,11 +242,16 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
     const preferences: TenantPreferences = {
       searchType,
       name: name.trim(),
+      email: email.trim().toLowerCase(),
       budgetMin: String(budgetMin),
       budgetMax: String(budgetMax),
       preferredLocations: selectedLocations,
       moveInDate: new Date().toISOString(),
       employmentStatus,
+      // New fields
+      workLocation: workLocation.trim(),
+      workMode,
+      lifestylePrefs,
     };
 
     if (searchType === 'full_home') {
@@ -189,18 +270,34 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
         <Ionicons name="person-circle" size={48} color="#6366f1" />
-        <Text style={styles.stepTitle}>What's your name?</Text>
+        <Text style={styles.stepTitle}>Tell us about you</Text>
         <Text style={styles.stepSubtitle}>Help landlords know who you are</Text>
       </View>
 
-      <TextInput
-        style={styles.textInput}
-        placeholder="Enter your full name"
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="words"
-        autoFocus
-      />
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Full Name *</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Enter your full name"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+          autoFocus
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Email *</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Enter your email address"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
 
       <View style={styles.employmentSection}>
         <Text style={styles.sectionLabel}>Employment Status</Text>
@@ -241,7 +338,210 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
     return `₹${(value / 1000).toFixed(0)}K`;
   };
 
-  const renderStep2 = () => (
+  // Helper for filtering work locations
+  const filteredWorkLocations = POPULAR_WORK_LOCATIONS.filter(loc =>
+    loc.toLowerCase().includes(workLocation.toLowerCase())
+  );
+
+  // NEW Step 2: Work Details
+  const renderWorkDetailsStep = () => (
+    <View style={styles.stepContainer}>
+      <View style={styles.stepHeader}>
+        <Ionicons name="briefcase" size={48} color="#10b981" />
+        <Text style={styles.stepTitle}>Where do you work?</Text>
+        <Text style={styles.stepSubtitle}>We'll find homes with the best commute</Text>
+      </View>
+
+      {/* Work Mode Selection */}
+      <View style={styles.workModeContainer}>
+        {WORK_MODES.map((mode) => (
+          <TouchableOpacity
+            key={mode.id}
+            style={[
+              styles.workModeCard,
+              workMode === mode.id && styles.workModeCardSelected,
+            ]}
+            onPress={() => setWorkMode(mode.id as any)}
+          >
+            <Ionicons
+              name={mode.icon as any}
+              size={24}
+              color={workMode === mode.id ? '#10b981' : '#6b7280'}
+            />
+            <Text
+              style={[
+                styles.workModeLabel,
+                workMode === mode.id && styles.workModeLabelSelected,
+              ]}
+            >
+              {mode.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Location Input (if not remote) */}
+      {workMode !== 'remote' && (
+        <View style={styles.workLocationSection}>
+          <Text style={styles.inputLabel}>
+            {workMode === 'student' ? 'College/University Location' : 'Office Location'}
+          </Text>
+          <View style={styles.locationInputContainer}>
+            <Ionicons name="location" size={20} color="#6b7280" style={styles.locationIcon} />
+            <TextInput
+              style={styles.locationInput}
+              placeholder="Search for your office/college location"
+              value={workLocation}
+              onChangeText={(text) => {
+                setWorkLocation(text);
+                setShowLocationSuggestions(text.length > 0);
+              }}
+              onFocus={() => setShowLocationSuggestions(workLocation.length > 0)}
+            />
+          </View>
+
+          {/* Location Suggestions */}
+          {showLocationSuggestions && filteredWorkLocations.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              {filteredWorkLocations.slice(0, 5).map((location) => (
+                <TouchableOpacity
+                  key={location}
+                  style={styles.suggestionItem}
+                  onPress={() => {
+                    setWorkLocation(location);
+                    setShowLocationSuggestions(false);
+                  }}
+                >
+                  <Ionicons name="location-outline" size={16} color="#6b7280" />
+                  <Text style={styles.suggestionText}>{location}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Quick Select */}
+          <View style={styles.quickSelectContainer}>
+            <Text style={styles.quickSelectLabel}>Popular areas:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.quickSelectRow}>
+                {POPULAR_WORK_LOCATIONS.slice(0, 5).map((location) => (
+                  <TouchableOpacity
+                    key={location}
+                    style={[
+                      styles.quickSelectChip,
+                      workLocation === location && styles.quickSelectChipSelected,
+                    ]}
+                    onPress={() => {
+                      setWorkLocation(location);
+                      setShowLocationSuggestions(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.quickSelectText,
+                        workLocation === location && styles.quickSelectTextSelected,
+                      ]}
+                    >
+                      {location}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {/* Info card for commute */}
+      <View style={styles.commuteInfoCard}>
+        <Ionicons name="car" size={20} color="#10b981" />
+        <Text style={styles.commuteInfoText}>
+          We'll show commute time to your {workMode === 'student' ? 'college' : 'office'} for every property
+        </Text>
+      </View>
+    </View>
+  );
+
+  // NEW Step 3: Lifestyle Preferences (Key Differentiation)
+  const renderLifestyleStep = () => (
+    <View style={styles.stepContainer}>
+      <View style={styles.stepHeader}>
+        <Ionicons name="heart" size={48} color="#ec4899" />
+        <Text style={styles.stepTitle}>Your lifestyle</Text>
+        <Text style={styles.stepSubtitle}>Help us find homes that match your needs</Text>
+      </View>
+
+      <ScrollView style={styles.lifestyleScroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.lifestyleOptionsGrid}>
+          {LIFESTYLE_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={[
+                styles.lifestyleOptionCard,
+                lifestylePrefs.includes(option.id) && {
+                  borderColor: option.color,
+                  backgroundColor: `${option.color}15`,
+                },
+              ]}
+              onPress={() => {
+                if (lifestylePrefs.includes(option.id)) {
+                  setLifestylePrefs(lifestylePrefs.filter(p => p !== option.id));
+                } else {
+                  setLifestylePrefs([...lifestylePrefs, option.id]);
+                }
+              }}
+            >
+              <View
+                style={[
+                  styles.lifestyleIconCircle,
+                  {
+                    backgroundColor: lifestylePrefs.includes(option.id)
+                      ? `${option.color}25`
+                      : '#f3f4f6',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={option.icon as any}
+                  size={24}
+                  color={lifestylePrefs.includes(option.id) ? option.color : '#6b7280'}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.lifestyleOptionLabel,
+                  lifestylePrefs.includes(option.id) && {
+                    color: option.color,
+                    fontWeight: '600',
+                  },
+                ]}
+              >
+                {option.label}
+              </Text>
+              {lifestylePrefs.includes(option.id) && (
+                <View style={[styles.lifestyleCheckBadge, { backgroundColor: option.color }]}>
+                  <Ionicons name="checkmark" size={12} color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {lifestylePrefs.length > 0 && (
+        <View style={styles.selectedBadge}>
+          <Text style={styles.selectedBadgeText}>
+            {lifestylePrefs.length} preference{lifestylePrefs.length > 1 ? 's' : ''} selected
+          </Text>
+        </View>
+      )}
+
+      <Text style={styles.skipHint}>You can skip this step if you prefer</Text>
+    </View>
+  );
+
+  // Step 4: Budget (was Step 2)
+  const renderBudgetStep = () => (
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
         <Ionicons name="wallet" size={48} color="#14b8a6" />
@@ -547,12 +847,16 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
       case 1:
         return renderStep1();
       case 2:
-        return renderStep2();
+        return renderWorkDetailsStep(); // NEW: Work Details
       case 3:
-        return renderStep3();
+        return renderLifestyleStep(); // NEW: Lifestyle Preferences
       case 4:
-        return searchType === 'full_home' ? renderFullHomeStep4() : renderRoomSharingStep4();
+        return renderBudgetStep(); // Was Step 2
       case 5:
+        return renderStep3(); // Preferred Locations (was Step 3)
+      case 6:
+        return searchType === 'full_home' ? renderFullHomeStep4() : renderRoomSharingStep4();
+      case 7:
         return renderRoomSharingStep5();
       default:
         return null;
@@ -963,6 +1267,188 @@ const styles = StyleSheet.create({
   lifestyleLabelSelected: {
     color: '#ec4899',
     fontWeight: '500',
+  },
+  // NEW: Input group styles
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  // NEW: Work Details styles
+  workModeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  workModeCard: {
+    width: '47%',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  workModeCardSelected: {
+    borderColor: '#10b981',
+    backgroundColor: '#ecfdf5',
+  },
+  workModeLabel: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  workModeLabelSelected: {
+    color: '#10b981',
+    fontWeight: '600',
+  },
+  workLocationSection: {
+    marginBottom: 16,
+  },
+  locationInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+  },
+  locationIcon: {
+    paddingLeft: 14,
+  },
+  locationInput: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#111827',
+  },
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  suggestionText: {
+    fontSize: 15,
+    color: '#374151',
+  },
+  quickSelectContainer: {
+    marginTop: 16,
+  },
+  quickSelectLabel: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  quickSelectRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickSelectChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+  },
+  quickSelectChipSelected: {
+    backgroundColor: '#10b981',
+  },
+  quickSelectText: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  quickSelectTextSelected: {
+    color: '#fff',
+    fontWeight: '500',
+  },
+  commuteInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    padding: 14,
+    borderRadius: 12,
+    gap: 10,
+    marginTop: 8,
+  },
+  commuteInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#065f46',
+    lineHeight: 18,
+  },
+  // NEW: Lifestyle step styles
+  lifestyleScroll: {
+    maxHeight: 380,
+  },
+  lifestyleOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  lifestyleOptionCard: {
+    width: '47%',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  lifestyleIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  lifestyleOptionLabel: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  lifestyleCheckBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedBadge: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  selectedBadgeText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  skipHint: {
+    textAlign: 'center',
+    fontSize: 13,
+    color: '#9ca3af',
+    marginTop: 12,
   },
   footer: {
     padding: 24,

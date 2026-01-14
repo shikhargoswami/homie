@@ -285,18 +285,18 @@ export async function getQuickReplies(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { category = 'general' } = req.query;
+    const { role = 'tenant' } = req.query;
 
-    const validCategories = ['greeting', 'viewing', 'negotiation', 'general'];
-    if (!validCategories.includes(category as string)) {
+    const validRoles = ['tenant', 'landlord'];
+    if (!validRoles.includes(role as string)) {
       res.status(400).json({ 
-        error: `Invalid category. Must be one of: ${validCategories.join(', ')}` 
+        error: `Invalid role. Must be one of: ${validRoles.join(', ')}` 
       });
       return;
     }
 
     const templates = await getQuickReplyTemplates(
-      category as 'greeting' | 'viewing' | 'negotiation' | 'general'
+      role as 'tenant' | 'landlord'
     );
 
     res.status(200).json({

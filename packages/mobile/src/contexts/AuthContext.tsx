@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
+import { api } from '../services/api';
 import type { User, AuthResponse, OTPResponse } from '../services/auth.service';
 
 // 🔧 DEV FLAG: Set to true to always start from login screen
 const DEV_FORCE_LOGOUT = true;
+// 🔧 DEV FLAG: Set to true to reset test user (9999999999) data on app start
+const DEV_RESET_TEST_USER = true;
 
 interface AuthContextType {
   user: User | null;
@@ -30,10 +33,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 🔧 DEV: Reset test user data for fresh onboarding
+        if (DEV_RESET_TEST_USER) {
+          try {
+            console.log('🔧 DEV: Resetting test user data...');
+            await api.post('/api/auth/dev/reset-test-user');
+            console.log('✅ DEV: Test user reset complete');
+          } catch (error) {
+            console.log('⚠️ DEV: Could not reset test user (may not exist yet)');
+          }
+        }
+
         // 🔧 DEV: Force logout for testing
         if (DEV_FORCE_LOGOUT) {
           console.log('🔧 DEV: Forcing logout for testing...');
-          await authService.logout();
+          try {
+            await authService.logout();
+          } catch (error) {
+            // Ignore logout errors - user might not be logged in
+          }
           setIsAuthenticated(false);
           setIsInitialized(true);
           return;
@@ -84,8 +102,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Verify OTP and login
   const verifyOTPMutation = useMutation<AuthResponse, Error, { phone: string; otp: string }>({
-    mutationFn: ({ phone, otp }) => {
+    mutationFn: async ({ phone, otp }) => {
       console.log('🔑 verifyOTPMutation.mutationFn called');
+      
+      // 🔧 DEV: Reset test user before verifying OTP to ensure fresh state
+      if (DEV_RESET_TEST_USER && phone === '9999999999') {
+        try {
+          console.log('🔧 DEV: Resetting test user before login...');
+          await api.post('/api/auth/dev/reset-test-user');
+          console.log('✅ DEV: Test user reset before login');
+        } catch (error) {
+          console.log('⚠️ DEV: Could not reset test user before login');
+        }
+      }
+      
       return authService.verifyOTP(phone, otp);
     },
     onSuccess: (data) => {

@@ -15,6 +15,7 @@ import chatRoutes from './routes/chat';
 import propertyRoutes, { landlordRoutes } from './routes/properties';
 import viewingRoutes, { tenantViewingRoutes, landlordViewingRoutes } from './routes/viewings';
 import usersRoutes from './routes/users';
+import subscriptionRoutes from './routes/subscription';
 
 dotenv.config();
 
@@ -77,6 +78,7 @@ app.get('/', (req: Request, res: Response) => {
       landlord: '/api/landlord',
       tenant: '/api/tenant',
       users: '/api/users',
+      subscription: '/api/subscription',
     },
   });
 });
@@ -88,6 +90,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/viewings', viewingRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // Role-specific routes
 app.use('/api/landlord', landlordRoutes);

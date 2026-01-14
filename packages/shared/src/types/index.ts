@@ -25,6 +25,44 @@ export enum TenantSearchType {
 }
 
 /**
+ * Subscription tiers
+ * - FREE: Basic tier with limits (20 swipes/day, 3 simultaneous chats)
+ * - PREMIUM: Enhanced features (unlimited swipes, 10 chats, priority support)
+ * - PRO: Full access (unlimited everything, analytics, verified badge)
+ */
+export enum SubscriptionTier {
+  FREE = 'free',
+  PREMIUM = 'premium',
+  PRO = 'pro',
+}
+
+/**
+ * Commute mode preferences
+ */
+export enum CommuteMode {
+  WALK_METRO = 'walk_metro',
+  CAR = 'car',
+  BIKE = 'bike',
+  BUS = 'bus',
+  WFH = 'wfh',
+  ANY = 'any',
+}
+
+/**
+ * Occupation types for matching
+ */
+export enum OccupationType {
+  IT_PROFESSIONAL = 'it_professional',
+  STUDENT = 'student',
+  HEALTHCARE = 'healthcare',
+  FREELANCER = 'freelancer',
+  CREATIVE = 'creative',
+  CORPORATE = 'corporate',
+  STARTUP = 'startup',
+  OTHER = 'other',
+}
+
+/**
  * Base user interface
  * All users (tenants, landlords, admins) share these fields
  */
@@ -38,6 +76,8 @@ export interface User {
   aadhaarVerified: boolean;
   panVerified: boolean;
   profileCompleted: boolean;
+  subscriptionTier: SubscriptionTier;
+  subscriptionExpiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +110,74 @@ export interface TenantPreferences {
 }
 
 /**
+ * Lifestyle tags for enhanced matching (tech-1.md Filter Set A)
+ */
+export type LifestyleTag =
+  | 'pet_owner_dog'
+  | 'pet_owner_cat'
+  | 'musician_guitar'
+  | 'musician_drums'
+  | 'musician_keyboard'
+  | 'sunlight_lover'
+  | 'quiet_mornings'
+  | 'early_riser'
+  | 'night_owl'
+  | 'gym_nearby'
+  | 'cook_frequently'
+  | 'nightlife'
+  | 'wfh_heavy'
+  | 'social_gatherings'
+  | 'yoga_meditation'
+  | 'outdoor_activities';
+
+/**
+ * Roommate compatibility preferences (for flatmate search)
+ */
+export interface RoommatePreferences {
+  sleepSchedule: 'early_bird' | 'night_owl' | 'flexible';
+  cleanlinessLevel: 'strict' | 'moderate' | 'relaxed';
+  socialPreference: 'social' | 'private' | 'flexible';
+  smoking: 'allowed' | 'outside_only' | 'not_allowed';
+  drinking: 'fine' | 'occasional' | 'not_allowed';
+  foodPreference: 'veg_only' | 'non_veg_ok' | 'no_preference';
+  guestPolicy: 'anytime' | 'weekends_only' | 'rarely' | 'never';
+}
+
+/**
+ * Noise levels for property (morning/evening/night in dB)
+ */
+export interface NoiseLevels {
+  morning: number | null; // dB reading (6AM-12PM)
+  evening: number | null; // dB reading (12PM-8PM)
+  night: number | null;   // dB reading (8PM-6AM)
+}
+
+/**
+ * Sunlight hours by room
+ */
+export interface SunlightHours {
+  [roomName: string]: number; // hours of sunlight per day
+}
+
+/**
+ * Pet policy details for property
+ */
+export interface PetDetails {
+  dogsAllowed: boolean;
+  catsAllowed: boolean;
+  maxWeightKg?: number;
+  gardenAccess?: boolean;
+  petDeposit?: number;
+}
+
+/**
+ * Commute times to major office hubs (pre-computed)
+ */
+export interface CommuteMatrix {
+  [officeHub: string]: number; // minutes to reach
+}
+
+/**
  * Extended user profile for tenants
  */
 export interface TenantProfile extends User {
@@ -79,9 +187,33 @@ export interface TenantProfile extends User {
     max: number;
   };
   preferences: TenantPreferences;
+  lifestyleTags: LifestyleTag[];
+  roommatePreferences?: RoommatePreferences;
+  workLocation?: {
+    lat: number;
+    lng: number;
+    address?: string;
+  };
+  maxCommuteMinutes: number;
+  commuteMode: CommuteMode;
+  gender?: string;
+  occupationType?: OccupationType;
   rating: number; // 0-5 stars from landlords
   ratingCount: number;
   previousLeases: number; // rental history count
+}
+
+/**
+ * Landlord's preferences for ideal tenant (two-sided matching)
+ */
+export interface LandlordTenantPreferences {
+  preferredOccupation?: OccupationType[];
+  ageRange?: { min: number; max: number };
+  genderPreference?: 'male' | 'female' | 'any';
+  incomeMultiplier?: number; // e.g., 3x rent
+  petsAllowed: boolean;
+  smokingAllowed: boolean;
+  familyPreferred?: boolean;
 }
 
 /**
@@ -89,6 +221,7 @@ export interface TenantProfile extends User {
  */
 export interface LandlordProfile extends User {
   propertyIds: string[];
+  tenantPreferences?: LandlordTenantPreferences;
   rating: number; // 0-5 stars from tenants
   ratingCount: number;
   avgTimeToRent: number; // in days
@@ -180,6 +313,32 @@ export interface Property {
     companyLease: boolean;
     bachelorGirls: boolean;
   };
+  
+  // === NEW: Lifestyle Data Points (tech-1.md) ===
+  
+  // Noise levels at different times (dB readings)
+  noiseLevels?: NoiseLevels;
+  
+  // Sunlight hours per room
+  sunlightHours?: SunlightHours;
+  
+  // Pre-computed commute times to major tech parks
+  commuteMatrix?: CommuteMatrix;
+  
+  // Nearby points of interest
+  neighborhoodPois?: {
+    cafes500m?: number;
+    metroDistanceM?: number;
+    parks1km?: number;
+    groceryStores?: number;
+    hospitals?: number;
+  };
+  
+  // Detailed pet policy
+  petDetails?: PetDetails;
+  
+  // Soundproofing rating (1-5)
+  soundproofRating?: number;
   
   // Lease terms
   leaseTerms: {
@@ -384,41 +543,7 @@ export interface MatchScore {
     amenitiesMatch: number; // 0-20 points
     vibeMatch: number; // 0-15 points
     commuteMatch: number; // 0-15 points
-  };
-}
-
-export interface MatchPreferences {
-  nonNegotiables: {
-    budget: { min: number; max: number };
-    location: string; // Neighborhood name
-    bhkType: string[]; // ['1bhk', '2bhk', '3bhk']
-    furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished' | 'any';
-    moveInDate: string; // ISO date string
-  };
-  mustHaves: {
-    amenities: string[]; // ['gym', 'parking', 'swimming_pool']
-    homeOfficeSpace?: boolean;
-    gatedCommunity?: boolean;
-    maxCommute?: number; // minutes to work location
-    workLocation?: { lat: number; lng: number };
-  };
-  niceToHaves: {
-    aestheticPreference?: 'modern' | 'traditional' | 'minimalist' | 'cozy';
-    communityVibe?: 'social' | 'quiet' | 'family' | 'young_professionals';
-    noiseLevel?: 'quiet' | 'moderate' | 'lively';
-    petFriendly?: boolean;
-    balconyPreference?: boolean;
-  };
-}
-
-export interface MatchScore {
-  totalScore: number; // 0-100
-  breakdown: {
-    budgetMatch: number; // 0-30 points
-    locationMatch: number; // 0-20 points
-    amenitiesMatch: number; // 0-20 points
-    vibeMatch: number; // 0-15 points
-    commuteMatch: number; // 0-15 points
+    lifestyleMatch?: number; // 0-25 points (new from tech-1.md)
   };
 }
 
@@ -427,4 +552,151 @@ export interface PropertyRecommendation {
   matchScore: number;
   matchReason: string;
   commuteTime?: number; // minutes
+}
+
+// ============================================
+// SUBSCRIPTION & LIMITS TYPES
+// ============================================
+
+export interface SwipeLimits {
+  dailySwipes: number;
+  dailySwipesUsed: number;
+  superLikesPerMonth: number;
+  superLikesUsed: number;
+  simultaneousChats: number;
+  activeChats: number;
+}
+
+export const SUBSCRIPTION_LIMITS: Record<SubscriptionTier, SwipeLimits> = {
+  [SubscriptionTier.FREE]: {
+    dailySwipes: 20,
+    dailySwipesUsed: 0,
+    superLikesPerMonth: 3,
+    superLikesUsed: 0,
+    simultaneousChats: 3,
+    activeChats: 0,
+  },
+  [SubscriptionTier.PREMIUM]: {
+    dailySwipes: 100,
+    dailySwipesUsed: 0,
+    superLikesPerMonth: 10,
+    superLikesUsed: 0,
+    simultaneousChats: 10,
+    activeChats: 0,
+  },
+  [SubscriptionTier.PRO]: {
+    dailySwipes: Infinity,
+    dailySwipesUsed: 0,
+    superLikesPerMonth: Infinity,
+    superLikesUsed: 0,
+    simultaneousChats: Infinity,
+    activeChats: 0,
+  },
+};
+
+// ============================================
+// VIEWING TYPES
+// ============================================
+
+export enum ViewingStatus {
+  PROPOSED = 'proposed',
+  COUNTER = 'counter',
+  CONFIRMED = 'confirmed',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  NO_SHOW = 'no_show',
+}
+
+export enum DepositStatus {
+  NOT_REQUIRED = 'not_required',
+  PENDING = 'pending',
+  PAID = 'paid',
+  REFUNDED = 'refunded',
+  FORFEITED = 'forfeited',
+}
+
+export interface Viewing {
+  id: string;
+  matchId: string;
+  tenantId: string;
+  landlordId: string;
+  propertyId: string;
+  status: ViewingStatus;
+  proposedDatetime: Date;
+  alternativeDatetime?: Date;
+  confirmedDatetime?: Date;
+  proposedBy: 'tenant' | 'landlord';
+  notes?: string;
+  depositAmount?: number;
+  depositStatus: DepositStatus;
+  depositTransactionId?: string;
+  gpsCheckin?: {
+    lat: number;
+    lng: number;
+    time: Date;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// ROOMMATE LISTING TYPES
+// ============================================
+
+export enum RoomType {
+  SINGLE = 'single',
+  SHARED = 'shared',
+  MASTER = 'master',
+}
+
+export interface RoommateListing {
+  id: string;
+  propertyId: string;
+  roomType: RoomType;
+  roomRent: number;
+  roomDeposit: number;
+  totalRooms: number;
+  availableRooms: number;
+  currentFlatmatesCount: number;
+  currentFlatmatesInfo: Array<{
+    gender?: string;
+    occupation?: OccupationType;
+    age?: number;
+  }>;
+  houseRules: {
+    noSmoking?: boolean;
+    noParties?: boolean;
+    quietHoursStart?: string;
+    guestsPolicy?: 'anytime' | 'weekends_only' | 'rarely' | 'never';
+  };
+  status: 'available' | 'full' | 'archived';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// CHAT VIOLATION TYPES
+// ============================================
+
+export enum ChatViolationType {
+  PHONE_NUMBER = 'phone_number',
+  EMAIL = 'email',
+  SOCIAL_MEDIA = 'social_media',
+  EXTERNAL_MEETING = 'external_meeting',
+}
+
+export enum ChatViolationAction {
+  WARNED = 'warned',
+  BLOCKED = 'blocked',
+  SUSPENDED = 'suspended',
+}
+
+export interface ChatViolation {
+  id: string;
+  userId: string;
+  conversationId?: string;
+  violationType: ChatViolationType;
+  detectedContent: string;
+  actionTaken: ChatViolationAction;
+  createdAt: Date;
 }

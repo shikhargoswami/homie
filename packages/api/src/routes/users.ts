@@ -42,7 +42,15 @@ router.get('/preferences', async (req, res, next) => {
           search_type,
           budget_min,
           budget_max,
-          preferences
+          preferences,
+          lifestyle_tags,
+          roommate_preferences,
+          work_location_lat,
+          work_location_lng,
+          max_commute_minutes,
+          commute_mode,
+          occupation_type,
+          gender
          FROM tenant_profiles
          WHERE user_id = $1`,
         [userId]
@@ -66,6 +74,13 @@ router.get('/preferences', async (req, res, next) => {
               min_lease_duration: 11,
               move_in_date: null,
               workplace_location: null,
+              // Lifestyle defaults (tech-1.md)
+              lifestyle: {
+                tags: [],
+                maxCommuteMinutes: 30,
+                commuteMode: 'any',
+                workLocation: null,
+              },
             },
           },
         });
@@ -74,14 +89,27 @@ router.get('/preferences', async (req, res, next) => {
 
       // Merge preferences JSONB with budget fields
       const prefs = prefResult.rows[0].preferences || {};
+      const row = prefResult.rows[0];
       res.status(200).json({
         success: true,
         data: {
           preferences: {
-            search_type: prefResult.rows[0].search_type,
-            budget_min: prefResult.rows[0].budget_min,
-            budget_max: prefResult.rows[0].budget_max,
+            search_type: row.search_type,
+            budget_min: row.budget_min,
+            budget_max: row.budget_max,
             ...prefs,
+            // Lifestyle data (tech-1.md)
+            lifestyle: {
+              tags: row.lifestyle_tags || [],
+              maxCommuteMinutes: row.max_commute_minutes || 30,
+              commuteMode: row.commute_mode || 'any',
+              workLocation: row.work_location_lat && row.work_location_lng 
+                ? { lat: parseFloat(row.work_location_lat), lng: parseFloat(row.work_location_lng) }
+                : null,
+            },
+            roommatePreferences: row.roommate_preferences || null,
+            occupationType: row.occupation_type,
+            gender: row.gender,
           },
         },
       });
@@ -160,34 +188,68 @@ router.put('/preferences', async (req, res, next) => {
     const role = userResult.rows[0].role;
 
     if (role === 'tenant') {
+      // Handle both nested { preferences: {...} } and flat structure
+      const prefs = preferences.preferences || preferences;
+      
+      // Extract lifestyle data (tech-1.md)
+      const lifestyle = prefs.lifestyle || {};
+      const lifestyleTags = lifestyle.tags || [];
+      const maxCommuteMinutes = lifestyle.maxCommuteMinutes ?? 30;
+      const commuteMode = lifestyle.commuteMode || 'any';
+      const workLocation = lifestyle.workLocation || null;
+      
+      // Extract budget from nonNegotiables or top level
+      const budgetMin = prefs.nonNegotiables?.budget?.min || prefs.budget_min || prefs.min_budget || 10000;
+      const budgetMax = prefs.nonNegotiables?.budget?.max || prefs.budget_max || prefs.max_budget || 50000;
+      
       // Upsert tenant preferences
-      // Schema uses: search_type, budget_min, budget_max, preferences (JSONB)
+      // Schema uses: search_type, budget_min, budget_max, preferences (JSONB), lifestyle columns
       await query(
         `INSERT INTO tenant_profiles (
-          user_id, search_type, budget_min, budget_max, preferences
-        ) VALUES ($1, $2, $3, $4, $5)
+          user_id, search_type, budget_min, budget_max, preferences,
+          lifestyle_tags, max_commute_minutes, commute_mode, work_location_lat, work_location_lng,
+          occupation_type, gender
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (user_id) DO UPDATE SET
           search_type = COALESCE($2, tenant_profiles.search_type),
           budget_min = COALESCE($3, tenant_profiles.budget_min),
           budget_max = COALESCE($4, tenant_profiles.budget_max),
           preferences = COALESCE($5, tenant_profiles.preferences),
+          lifestyle_tags = COALESCE($6, tenant_profiles.lifestyle_tags),
+          max_commute_minutes = COALESCE($7, tenant_profiles.max_commute_minutes),
+          commute_mode = COALESCE($8, tenant_profiles.commute_mode),
+          work_location_lat = $9,
+          work_location_lng = $10,
+          occupation_type = COALESCE($11, tenant_profiles.occupation_type),
+          gender = COALESCE($12, tenant_profiles.gender),
           updated_at = NOW()`,
         [
           userId,
-          preferences.search_type || 'full_home',
-          preferences.budget_min || preferences.min_budget || 10000,
-          preferences.budget_max || preferences.max_budget || 50000,
+          prefs.search_type || 'full_home',
+          budgetMin,
+          budgetMax,
           JSON.stringify({
-            preferred_locations: preferences.preferred_locations || [],
-            preferred_configuration: preferences.preferred_configuration || '2bhk',
-            preferred_furnishing: preferences.preferred_furnishing || 'semi-furnished',
-            preferred_amenities: preferences.preferred_amenities || [],
-            pets_allowed: preferences.pets_allowed ?? false,
-            smoking_allowed: preferences.smoking_allowed ?? false,
-            min_lease_duration: preferences.min_lease_duration || 11,
-            move_in_date: preferences.move_in_date || null,
-            workplace_location: preferences.workplace_location || null,
+            preferred_locations: prefs.preferred_locations || [],
+            preferred_configuration: prefs.preferred_configuration || '2bhk',
+            preferred_furnishing: prefs.nonNegotiables?.furnishing || prefs.preferred_furnishing || 'semi-furnished',
+            preferred_amenities: prefs.mustHaves?.amenities || prefs.preferred_amenities || [],
+            pets_allowed: prefs.niceToHaves?.petFriendly ?? prefs.pets_allowed ?? false,
+            smoking_allowed: prefs.smoking_allowed ?? false,
+            min_lease_duration: prefs.min_lease_duration || 11,
+            move_in_date: prefs.nonNegotiables?.moveInDate || prefs.move_in_date || null,
+            workplace_location: prefs.workplace_location || null,
+            // Store nested preferences from UI (nonNegotiables, mustHaves, niceToHaves)
+            nonNegotiables: prefs.nonNegotiables,
+            mustHaves: prefs.mustHaves,
+            niceToHaves: prefs.niceToHaves,
           }),
+          JSON.stringify(lifestyleTags),
+          maxCommuteMinutes,
+          commuteMode,
+          workLocation?.lat || null,
+          workLocation?.lng || null,
+          prefs.occupationType || null,
+          prefs.gender || null,
         ]
       );
 

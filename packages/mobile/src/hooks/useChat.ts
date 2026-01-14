@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 
 // Get API URL from environment or use fallback
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.103:3000';
+const API_BASE_URL = ENV_API_BASE_URL || 'http://192.168.0.109:3000';
 
 export interface Message {
   id: string;
@@ -12,7 +13,7 @@ export interface Message {
   content: string;
   message_type: 'text' | 'image' | 'viewing_request' | 'system';
   metadata?: Record<string, unknown>;
-  is_read: boolean;
+  read_at: string | null;
   created_at: string;
 }
 
@@ -51,8 +52,10 @@ export function useChat() {
   // Initialize socket connection
   useEffect(() => {
     const initSocket = async () => {
-      const token = await AsyncStorage.getItem('authToken');
-      const userId = await AsyncStorage.getItem('userId');
+      const token = await AsyncStorage.getItem('accessToken');
+      const userJson = await AsyncStorage.getItem('user');
+      const user = userJson ? JSON.parse(userJson) : null;
+      const userId = user?.id;
       
       if (!token || !userId) return;
 
@@ -144,26 +147,36 @@ export function useChat() {
   // Fetch conversations via REST
   const fetchConversations = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
+      const token = await AsyncStorage.getItem('accessToken');
+      console.log('[useChat] Fetching conversations from:', `${API_BASE_URL}/api/chat/conversations`);
+      console.log('[useChat] Token exists:', !!token);
+      
+      const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+      
+      console.log('[useChat] Response status:', response.status);
       const data = await response.json();
+      console.log('[useChat] Response data:', JSON.stringify(data).substring(0, 200));
+      
       if (data.success) {
+        console.log('[useChat] Setting conversations:', data.conversations?.length || 0);
         setConversations(data.conversations);
+      } else {
+        console.error('[useChat] API returned error:', data.error);
       }
     } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+      console.error('[useChat] Failed to fetch conversations:', error);
     }
   }, []);
 
   // Fetch messages for a conversation
   const fetchMessages = useCallback(async (conversationId: string) => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages`, {
+      const token = await AsyncStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -180,8 +193,8 @@ export function useChat() {
   // Start a conversation
   const startConversation = useCallback(async (propertyId: string): Promise<Conversation | null> => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
+      const token = await AsyncStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -218,8 +231,8 @@ export function useChat() {
     } else {
       // REST fallback
       try {
-        const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages`, {
+        const token = await AsyncStorage.getItem('accessToken');
+        const response = await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -262,8 +275,8 @@ export function useChat() {
     
     // Also call REST endpoint
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/read`, {
+      const token = await AsyncStorage.getItem('accessToken');
+      await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/read`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -286,8 +299,8 @@ export function useChat() {
   // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/chat/unread`, {
+      const token = await AsyncStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/chat/unread`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -304,8 +317,8 @@ export function useChat() {
   // Archive conversation
   const archiveConversation = useCallback(async (conversationId: string) => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/archive`, {
+      const token = await AsyncStorage.getItem('accessToken');
+      await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/archive`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

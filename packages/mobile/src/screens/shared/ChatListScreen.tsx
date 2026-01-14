@@ -25,15 +25,19 @@ export default function ChatListScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  console.log('[ChatListScreen] Render - conversations:', conversations?.length || 0, 'isLoading:', isLoading);
+
   useEffect(() => {
     loadConversations();
   }, []);
 
   const loadConversations = async () => {
+    console.log('[ChatListScreen] loadConversations starting...');
     setIsLoading(true);
     await fetchConversations();
     await fetchUnreadCount();
     setIsLoading(false);
+    console.log('[ChatListScreen] loadConversations done');
   };
 
   const onRefresh = async () => {

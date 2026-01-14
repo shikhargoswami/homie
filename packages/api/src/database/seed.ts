@@ -92,6 +92,14 @@ const seedTenantProfiles = async (client: PoolClient) => {
       configurations: ['2bhk'],
       furnishing: ['semi_furnished', 'fully_furnished'],
       employment: 'employed',
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['pet_owner_dog', 'sunlight_lover', 'gym_nearby', 'cook_frequently'],
+      workLocationLat: 12.9716,
+      workLocationLng: 77.5946,
+      maxCommuteMinutes: 30,
+      commuteMode: 'car',
+      occupationType: 'it_professional',
+      gender: 'male',
       preferences: {
         nonNegotiables: {
           gatedCommunity: true,
@@ -116,6 +124,14 @@ const seedTenantProfiles = async (client: PoolClient) => {
       configurations: ['3bhk'],
       furnishing: ['fully_furnished'],
       employment: 'employed',
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['wfh_heavy', 'quiet_mornings', 'sunlight_lover'],
+      workLocationLat: null,
+      workLocationLng: null,
+      maxCommuteMinutes: 0,
+      commuteMode: 'wfh',
+      occupationType: 'freelancer',
+      gender: 'female',
       preferences: {
         nonNegotiables: {
           gatedCommunity: true,
@@ -140,6 +156,14 @@ const seedTenantProfiles = async (client: PoolClient) => {
       configurations: ['1bhk'],
       furnishing: ['unfurnished', 'semi_furnished'],
       employment: 'student',
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['gym_nearby', 'nightlife', 'cook_frequently'],
+      workLocationLat: 12.9063,
+      workLocationLng: 77.5857,
+      maxCommuteMinutes: 45,
+      commuteMode: 'walk_metro',
+      occupationType: 'student',
+      gender: 'male',
       preferences: {
         nonNegotiables: {
           nearMetro: true,
@@ -161,6 +185,14 @@ const seedTenantProfiles = async (client: PoolClient) => {
       configurations: ['3bhk', '4bhk+'],
       furnishing: ['fully_furnished'],
       employment: 'self_employed',
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['quiet_mornings', 'sunlight_lover', 'wfh_heavy'],
+      workLocationLat: null,
+      workLocationLng: null,
+      maxCommuteMinutes: 0,
+      commuteMode: 'wfh',
+      occupationType: 'freelancer',
+      gender: 'male',
       preferences: {
         nonNegotiables: {
           separateEntrance: true,
@@ -184,6 +216,14 @@ const seedTenantProfiles = async (client: PoolClient) => {
       configurations: ['2bhk'],
       furnishing: ['semi_furnished'],
       employment: 'employed',
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['gym_nearby', 'cook_frequently', 'quiet_mornings'],
+      workLocationLat: 12.8456,
+      workLocationLng: 77.6603,
+      maxCommuteMinutes: 40,
+      commuteMode: 'bus',
+      occupationType: 'it_professional',
+      gender: 'female',
       preferences: {
         nonNegotiables: {
           nearTechPark: true,
@@ -204,15 +244,37 @@ const seedTenantProfiles = async (client: PoolClient) => {
     const pref = fullHomePreferences[i] || fullHomePreferences[0];
     await client.query(`
       INSERT INTO tenant_profiles (
-        user_id, search_type, budget_min, budget_max, employment_status, preferences
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        user_id, search_type, budget_min, budget_max, employment_status, preferences,
+        lifestyle_tags, work_location_lat, work_location_lng, max_commute_minutes, commute_mode, occupation_type, gender
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       ON CONFLICT (user_id) DO UPDATE SET
         search_type = $2,
         budget_min = $3,
         budget_max = $4,
         employment_status = $5,
-        preferences = $6
-    `, [tenant.id, pref.searchType, pref.budgetMin, pref.budgetMax, pref.employment, JSON.stringify(pref.preferences)]);
+        preferences = $6,
+        lifestyle_tags = $7,
+        work_location_lat = $8,
+        work_location_lng = $9,
+        max_commute_minutes = $10,
+        commute_mode = $11,
+        occupation_type = $12,
+        gender = $13
+    `, [
+      tenant.id, 
+      pref.searchType, 
+      pref.budgetMin, 
+      pref.budgetMax, 
+      pref.employment, 
+      JSON.stringify(pref.preferences),
+      JSON.stringify(pref.lifestyleTags || []),
+      pref.workLocationLat || null,
+      pref.workLocationLng || null,
+      pref.maxCommuteMinutes || 30,
+      pref.commuteMode || 'any',
+      pref.occupationType || 'other',
+      pref.gender || null
+    ]);
     i++;
   }
 
@@ -230,6 +292,22 @@ const seedTenantProfiles = async (client: PoolClient) => {
       genderPreference: 'male',
       employment: 'employed',
       lifestylePreferences: ['non_smoker', 'vegetarian', 'early_riser', 'work_from_home'],
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['cook_frequently', 'quiet_mornings', 'wfh_heavy'],
+      workLocationLat: null, // WFH
+      workLocationLng: null,
+      maxCommuteMinutes: 0,
+      commuteMode: 'wfh',
+      occupationType: 'it_professional',
+      gender: 'male',
+      roommatePreferences: {
+        sleep_schedule: 'early_bird',
+        cleanliness_level: 'high',
+        social_preference: 'occasionally_social',
+        smoking: false,
+        drinking: 'social',
+        food_preference: 'vegetarian'
+      },
       preferences: {
         flatmatePreferences: {
           ageRange: '22-30',
@@ -246,6 +324,22 @@ const seedTenantProfiles = async (client: PoolClient) => {
       genderPreference: 'female',
       employment: 'employed',
       lifestylePreferences: ['non_smoker', 'social', 'night_owl'],
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['nightlife', 'gym_nearby', 'cook_frequently'],
+      workLocationLat: 12.9716,
+      workLocationLng: 77.6412,
+      maxCommuteMinutes: 30,
+      commuteMode: 'walk_metro',
+      occupationType: 'corporate',
+      gender: 'female',
+      roommatePreferences: {
+        sleep_schedule: 'night_owl',
+        cleanliness_level: 'medium',
+        social_preference: 'very_social',
+        smoking: false,
+        drinking: 'social',
+        food_preference: 'non_vegetarian'
+      },
       preferences: {
         flatmatePreferences: {
           ageRange: '24-32',
@@ -262,6 +356,22 @@ const seedTenantProfiles = async (client: PoolClient) => {
       genderPreference: 'any',
       employment: 'student',
       lifestylePreferences: ['non_smoker', 'quiet', 'pet_friendly'],
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['pet_owner_cat', 'quiet_mornings', 'cook_frequently'],
+      workLocationLat: 12.9063,
+      workLocationLng: 77.5857,
+      maxCommuteMinutes: 45,
+      commuteMode: 'bus',
+      occupationType: 'student',
+      gender: 'male',
+      roommatePreferences: {
+        sleep_schedule: 'flexible',
+        cleanliness_level: 'medium',
+        social_preference: 'mostly_private',
+        smoking: false,
+        drinking: 'never',
+        food_preference: 'vegetarian'
+      },
       preferences: {
         flatmatePreferences: {
           ageRange: '20-26',
@@ -278,6 +388,22 @@ const seedTenantProfiles = async (client: PoolClient) => {
       genderPreference: 'male',
       employment: 'employed',
       lifestylePreferences: ['non_smoker', 'work_from_home', 'social'],
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['wfh_heavy', 'gym_nearby', 'sunlight_lover'],
+      workLocationLat: null,
+      workLocationLng: null,
+      maxCommuteMinutes: 0,
+      commuteMode: 'wfh',
+      occupationType: 'it_professional',
+      gender: 'male',
+      roommatePreferences: {
+        sleep_schedule: 'early_bird',
+        cleanliness_level: 'high',
+        social_preference: 'occasionally_social',
+        smoking: false,
+        drinking: 'social',
+        food_preference: 'non_vegetarian'
+      },
       preferences: {
         flatmatePreferences: {
           ageRange: '25-35',
@@ -294,6 +420,22 @@ const seedTenantProfiles = async (client: PoolClient) => {
       genderPreference: 'any',
       employment: 'employed',
       lifestylePreferences: ['vegetarian', 'early_riser', 'quiet'],
+      // Lifestyle matching data (tech-1.md)
+      lifestyleTags: ['cook_frequently', 'quiet_mornings', 'gym_nearby'],
+      workLocationLat: 12.8456,
+      workLocationLng: 77.6603,
+      maxCommuteMinutes: 25,
+      commuteMode: 'bike',
+      occupationType: 'it_professional',
+      gender: 'female',
+      roommatePreferences: {
+        sleep_schedule: 'early_bird',
+        cleanliness_level: 'high',
+        social_preference: 'mostly_private',
+        smoking: false,
+        drinking: 'never',
+        food_preference: 'vegetarian'
+      },
       preferences: {
         flatmatePreferences: {
           ageRange: '22-30',
@@ -309,20 +451,44 @@ const seedTenantProfiles = async (client: PoolClient) => {
     const pref = roomSharingPreferences[i] || roomSharingPreferences[0];
     await client.query(`
       INSERT INTO tenant_profiles (
-        user_id, search_type, budget_min, budget_max, employment_status, preferences
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        user_id, search_type, budget_min, budget_max, employment_status, preferences,
+        lifestyle_tags, roommate_preferences, work_location_lat, work_location_lng, max_commute_minutes, commute_mode, occupation_type, gender
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       ON CONFLICT (user_id) DO UPDATE SET
         search_type = $2,
         budget_min = $3,
         budget_max = $4,
         employment_status = $5,
-        preferences = $6
-    `, [tenant.id, pref.searchType, pref.budgetMin, pref.budgetMax, pref.employment, JSON.stringify({
-      ...pref.preferences,
-      genderPreference: pref.genderPreference,
-      lifestylePreferences: pref.lifestylePreferences,
-      preferredLocations: pref.locations,
-    })]);
+        preferences = $6,
+        lifestyle_tags = $7,
+        roommate_preferences = $8,
+        work_location_lat = $9,
+        work_location_lng = $10,
+        max_commute_minutes = $11,
+        commute_mode = $12,
+        occupation_type = $13,
+        gender = $14
+    `, [
+      tenant.id, 
+      pref.searchType, 
+      pref.budgetMin, 
+      pref.budgetMax, 
+      pref.employment, 
+      JSON.stringify({
+        ...pref.preferences,
+        genderPreference: pref.genderPreference,
+        lifestylePreferences: pref.lifestylePreferences,
+        preferredLocations: pref.locations,
+      }),
+      JSON.stringify(pref.lifestyleTags || []),
+      JSON.stringify(pref.roommatePreferences || {}),
+      pref.workLocationLat || null,
+      pref.workLocationLng || null,
+      pref.maxCommuteMinutes || 30,
+      pref.commuteMode || 'any',
+      pref.occupationType || 'other',
+      pref.gender || null
+    ]);
     i++;
   }
   
@@ -392,6 +558,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800', // Kitchen
         'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800', // Bathroom
       ],
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 45, evening: 55, night: 35 },
+      sunlightHours: { living: 6, bedroom1: 5, bedroom2: 4 },
+      petDetails: { dogs_allowed: true, max_weight_kg: 15, cats_allowed: true, garden_access: false },
+      soundproofRating: 3,
+      commuteMatrix: { manyata_tech: 35, electronic_city: 50, whitefield: 40 },
+      neighborhoodPois: { cafes_500m: 12, metro_distance_m: 400, parks_1km: 3 },
     },
     {
       address: 'Green Valley Apartments, Indiranagar',
@@ -413,6 +586,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800', // Dining area
         'https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=800', // Balcony
       ],
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 50, evening: 60, night: 40 },
+      sunlightHours: { living: 8, bedroom1: 6, bedroom2: 5, bedroom3: 4 },
+      petDetails: { dogs_allowed: false, cats_allowed: true, garden_access: false },
+      soundproofRating: 4,
+      commuteMatrix: { manyata_tech: 25, electronic_city: 55, whitefield: 35 },
+      neighborhoodPois: { cafes_500m: 20, metro_distance_m: 800, parks_1km: 2 },
     },
     {
       address: 'Tech Park Residency, Whitefield',
@@ -434,6 +614,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800', // Kitchen
         'https://images.unsplash.com/photo-1507652955-f3dcef5a3be5?w=800', // View
       ],
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 40, evening: 50, night: 32 },
+      sunlightHours: { living: 7, bedroom1: 6, bedroom2: 5 },
+      petDetails: { dogs_allowed: true, max_weight_kg: 25, cats_allowed: true, garden_access: false },
+      soundproofRating: 4,
+      commuteMatrix: { manyata_tech: 45, electronic_city: 30, whitefield: 5 },
+      neighborhoodPois: { cafes_500m: 15, metro_distance_m: 600, parks_1km: 4 },
     },
     {
       address: 'Lake View Villa, HSR Layout',
@@ -455,6 +642,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1600566753151-384129cf4e3e?w=800', // Dining
         'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800', // Terrace
       ],
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 35, evening: 40, night: 28 },
+      sunlightHours: { living: 9, bedroom1: 7, bedroom2: 6, bedroom3: 5, bedroom4: 4 },
+      petDetails: { dogs_allowed: true, max_weight_kg: 40, cats_allowed: true, garden_access: true },
+      soundproofRating: 5,
+      commuteMatrix: { manyata_tech: 40, electronic_city: 35, whitefield: 45 },
+      neighborhoodPois: { cafes_500m: 8, metro_distance_m: 1200, parks_1km: 5 },
     },
     {
       address: 'Metro View Apartments, Electronic City',
@@ -476,6 +670,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800', // Kitchen
         'https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800', // Compact space
       ],
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 38, evening: 48, night: 30 },
+      sunlightHours: { living: 5, bedroom1: 4 },
+      petDetails: { dogs_allowed: false, cats_allowed: true, garden_access: false },
+      soundproofRating: 3,
+      commuteMatrix: { manyata_tech: 55, electronic_city: 5, whitefield: 25 },
+      neighborhoodPois: { cafes_500m: 6, metro_distance_m: 200, parks_1km: 2 },
     },
     // Properties for room sharing / PG
     {
@@ -498,6 +699,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800', // Open kitchen
       ],
       tenantPrefs: { genderPreference: 'male', maxOccupants: 1 },
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 42, evening: 52, night: 38 },
+      sunlightHours: { bedroom1: 5 },
+      petDetails: { dogs_allowed: false, cats_allowed: false, garden_access: false },
+      soundproofRating: 2,
+      commuteMatrix: { manyata_tech: 32, electronic_city: 48, whitefield: 42 },
+      neighborhoodPois: { cafes_500m: 15, metro_distance_m: 500, parks_1km: 3 },
     },
     {
       address: 'Shared Space, BTM Layout 2nd Stage',
@@ -519,6 +727,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800', // Bathroom
       ],
       tenantPrefs: { genderPreference: 'female', maxOccupants: 1 },
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 40, evening: 50, night: 35 },
+      sunlightHours: { bedroom1: 4 },
+      petDetails: { dogs_allowed: false, cats_allowed: false, garden_access: false },
+      soundproofRating: 2,
+      commuteMatrix: { manyata_tech: 38, electronic_city: 35, whitefield: 48 },
+      neighborhoodPois: { cafes_500m: 10, metro_distance_m: 700, parks_1km: 2 },
     },
     {
       address: 'Urban Nest Co-Living, Marathahalli',
@@ -541,6 +756,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800', // Study area
       ],
       tenantPrefs: { genderPreference: 'any', maxOccupants: 2 },
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 45, evening: 55, night: 40 },
+      sunlightHours: { bedroom1: 6 },
+      petDetails: { dogs_allowed: false, cats_allowed: true, garden_access: false },
+      soundproofRating: 3,
+      commuteMatrix: { manyata_tech: 40, electronic_city: 28, whitefield: 15 },
+      neighborhoodPois: { cafes_500m: 12, metro_distance_m: 900, parks_1km: 2 },
     },
     {
       address: 'Premium PG, Sarjapur Road',
@@ -562,6 +784,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800', // Garden view
       ],
       tenantPrefs: { genderPreference: 'male', maxOccupants: 1 },
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 38, evening: 48, night: 32 },
+      sunlightHours: { bedroom1: 7 },
+      petDetails: { dogs_allowed: true, max_weight_kg: 10, cats_allowed: true, garden_access: true },
+      soundproofRating: 4,
+      commuteMatrix: { manyata_tech: 50, electronic_city: 20, whitefield: 22 },
+      neighborhoodPois: { cafes_500m: 8, metro_distance_m: 1100, parks_1km: 3 },
     },
     {
       address: 'Harmony Living Spaces, JP Nagar',
@@ -584,6 +813,13 @@ const seedProperties = async (client: PoolClient) => {
         'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800', // Kitchen
       ],
       tenantPrefs: { genderPreference: 'any', maxOccupants: 1 },
+      // Lifestyle data (tech-1.md)
+      noiseLevels: { morning: 36, evening: 45, night: 30 },
+      sunlightHours: { bedroom1: 5 },
+      petDetails: { dogs_allowed: false, cats_allowed: false, garden_access: false },
+      soundproofRating: 3,
+      commuteMatrix: { manyata_tech: 45, electronic_city: 38, whitefield: 50 },
+      neighborhoodPois: { cafes_500m: 9, metro_distance_m: 600, parks_1km: 4 },
     },
   ];
 
@@ -598,12 +834,14 @@ const seedProperties = async (client: PoolClient) => {
         landlord_id, address, latitude, longitude, neighborhood,
         property_type, configuration, size_sqft, floor_number, total_floors,
         furnishing, rent, security_deposit, maintenance_charge,
-        amenities, photos, tenant_preferences, status, available_from
+        amenities, photos, tenant_preferences, status, available_from,
+        noise_levels, sunlight_hours, pet_details, soundproof_rating, commute_matrix, neighborhood_pois
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
         $11, $12, $13, $14,
-        $15, $16, $17, 'available', '2025-02-01'
+        $15, $16, $17, 'available', '2025-02-01',
+        $18, $19, $20, $21, $22, $23
       )
     `, [
       landlord.id,
@@ -623,6 +861,12 @@ const seedProperties = async (client: PoolClient) => {
       JSON.stringify(prop.amenities),
       JSON.stringify(prop.photos),
       JSON.stringify(prop.tenantPrefs || {}),
+      JSON.stringify((prop as any).noiseLevels || { morning: null, evening: null, night: null }),
+      JSON.stringify((prop as any).sunlightHours || {}),
+      JSON.stringify((prop as any).petDetails || {}),
+      (prop as any).soundproofRating || null,
+      JSON.stringify((prop as any).commuteMatrix || {}),
+      JSON.stringify((prop as any).neighborhoodPois || {}),
     ]);
   }
   
@@ -635,21 +879,34 @@ const seedProperties = async (client: PoolClient) => {
 const seedConversations = async (client: PoolClient) => {
   console.log('📝 Seeding conversations and messages...');
   
-  // Get matches with their tenant and property info
-  const matchesResult = await client.query(`
+  // Get matches for the primary test user (9876540001) first
+  const primaryUserMatches = await client.query(`
     SELECT m.id as match_id, m.tenant_id, p.id as property_id, p.landlord_id, p.address
     FROM matches m
     JOIN properties p ON m.property_id = p.id
-    WHERE m.status = 'interested'
+    JOIN users u ON m.tenant_id = u.id
+    WHERE m.status = 'interested' AND u.phone = '9876540001'
+    LIMIT 2
+  `);
+
+  // Get more matches from other users
+  const otherMatches = await client.query(`
+    SELECT m.id as match_id, m.tenant_id, p.id as property_id, p.landlord_id, p.address
+    FROM matches m
+    JOIN properties p ON m.property_id = p.id
+    JOIN users u ON m.tenant_id = u.id
+    WHERE m.status = 'interested' AND u.phone != '9876540001'
     LIMIT 3
   `);
 
-  if (matchesResult.rows.length === 0) {
+  const allMatches = [...primaryUserMatches.rows, ...otherMatches.rows];
+
+  if (allMatches.length === 0) {
     console.log('⚠️ Skipping conversations seed - no matches found');
     return;
   }
 
-  for (const match of matchesResult.rows) {
+  for (const match of allMatches) {
     // Create conversation
     const convResult = await client.query(`
       INSERT INTO conversations (match_id, property_id, tenant_id, landlord_id, status)
@@ -684,15 +941,23 @@ const seedConversations = async (client: PoolClient) => {
 
 /**
  * Seed viewings for testing calendar/scheduling
+ * 
+ * User Journey States:
+ * - proposed: Tenant proposed a time, waiting for landlord
+ * - counter: Landlord proposed alternative time, waiting for tenant
+ * - confirmed: Both agreed on a time
+ * - completed: Viewing happened successfully
+ * - cancelled: Either party cancelled
+ * - no_show: One party didn't show up
  */
 const seedViewings = async (client: PoolClient) => {
-  console.log('📝 Seeding viewings...');
+  console.log('📝 Seeding viewings with full user journey states...');
 
   // Get conversations with all related info
   const conversationsResult = await client.query(`
     SELECT c.id as conversation_id, c.match_id, c.property_id, c.tenant_id, c.landlord_id
     FROM conversations c
-    LIMIT 5
+    LIMIT 6
   `);
 
   if (conversationsResult.rows.length === 0) {
@@ -700,21 +965,90 @@ const seedViewings = async (client: PoolClient) => {
     return;
   }
 
-  const viewingStatuses = ['proposed', 'confirmed', 'completed', 'cancelled'];
   const today = new Date();
 
-  for (let i = 0; i < conversationsResult.rows.length; i++) {
+  // Create viewings in different states to test all user journey scenarios
+  const viewingScenarios = [
+    {
+      status: 'proposed',
+      daysFromNow: 3,
+      hour: 10,
+      tenantNotes: 'Looking forward to seeing the property!',
+      description: 'Tenant waiting for landlord response',
+    },
+    {
+      status: 'counter',
+      daysFromNow: 4,
+      hour: 11,
+      alternativeDaysFromNow: 5,
+      alternativeHour: 14,
+      landlordNotes: 'The morning doesn\'t work for me. How about the afternoon?',
+      description: 'Landlord counter-proposed, waiting for tenant',
+    },
+    {
+      status: 'confirmed',
+      daysFromNow: 2,
+      hour: 15,
+      tenantNotes: 'Will bring my partner along',
+      landlordNotes: 'Please be on time',
+      description: 'Confirmed viewing upcoming',
+    },
+    {
+      status: 'completed',
+      daysFromNow: -3,
+      hour: 11,
+      viewingRating: 5,
+      viewingFeedback: 'The property looks great! Very well maintained.',
+      description: 'Past viewing - completed successfully',
+    },
+    {
+      status: 'cancelled',
+      daysFromNow: -1,
+      hour: 16,
+      cancellationReason: 'Schedule conflict - something urgent came up',
+      description: 'Past viewing - cancelled',
+    },
+    {
+      status: 'no_show',
+      daysFromNow: -5,
+      hour: 10,
+      description: 'Past viewing - tenant didn\'t show',
+    },
+  ];
+
+  for (let i = 0; i < Math.min(conversationsResult.rows.length, viewingScenarios.length); i++) {
     const conv = conversationsResult.rows[i];
-    const status = viewingStatuses[i % viewingStatuses.length];
+    const scenario = viewingScenarios[i];
     
-    // Schedule viewings for the next few days
-    const scheduledDate = new Date(today);
-    scheduledDate.setDate(today.getDate() + i + 1);
-    scheduledDate.setHours(10 + i, 0, 0, 0);
+    // Calculate proposed datetime
+    const proposedDate = new Date(today);
+    proposedDate.setDate(today.getDate() + scenario.daysFromNow);
+    proposedDate.setHours(scenario.hour, 0, 0, 0);
+
+    // Calculate alternative datetime if exists
+    let alternativeDate = null;
+    let confirmedDate = null;
+    
+    if (scenario.alternativeDaysFromNow !== undefined) {
+      alternativeDate = new Date(today);
+      alternativeDate.setDate(today.getDate() + scenario.alternativeDaysFromNow);
+      alternativeDate.setHours(scenario.alternativeHour || 10, 0, 0, 0);
+    }
+
+    // For confirmed/completed viewings, set confirmed_datetime
+    if (scenario.status === 'confirmed' || scenario.status === 'completed') {
+      confirmedDate = proposedDate;
+    }
 
     await client.query(`
-      INSERT INTO viewings (conversation_id, match_id, property_id, tenant_id, landlord_id, proposed_datetime, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO viewings (
+        conversation_id, match_id, property_id, tenant_id, landlord_id, 
+        proposed_datetime, alternative_datetime, confirmed_datetime,
+        status, tenant_notes, landlord_notes,
+        cancelled_by, cancellation_reason,
+        viewing_rating, viewing_feedback
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       ON CONFLICT DO NOTHING
     `, [
       conv.conversation_id,
@@ -722,12 +1056,26 @@ const seedViewings = async (client: PoolClient) => {
       conv.property_id,
       conv.tenant_id,
       conv.landlord_id,
-      scheduledDate.toISOString(),
-      status
+      proposedDate.toISOString(),
+      alternativeDate?.toISOString() || null,
+      confirmedDate?.toISOString() || null,
+      scenario.status,
+      scenario.tenantNotes || null,
+      scenario.landlordNotes || null,
+      scenario.status === 'cancelled' ? conv.tenant_id : null,
+      scenario.cancellationReason || null,
+      scenario.viewingRating || null,
+      scenario.viewingFeedback || null,
     ]);
   }
 
-  console.log('✅ Viewings seeded');
+  console.log('✅ Viewings seeded with all user journey states:');
+  console.log('   - proposed: Waiting for landlord');
+  console.log('   - counter: Landlord counter-proposed');
+  console.log('   - confirmed: Upcoming confirmed viewing');
+  console.log('   - completed: Past successful viewing');
+  console.log('   - cancelled: Past cancelled viewing');
+  console.log('   - no_show: Past no-show viewing');
 };
 
 /**
@@ -736,9 +1084,10 @@ const seedViewings = async (client: PoolClient) => {
 const seedMatches = async (client: PoolClient) => {
   console.log('📝 Seeding matches...');
 
-  // Get tenants
+  // Get tenants - order by phone to get test user first
   const tenantsResult = await client.query(`
-    SELECT id FROM users WHERE role = 'tenant' AND profile_completed = true
+    SELECT id, phone FROM users WHERE role = 'tenant' AND profile_completed = true
+    ORDER BY phone ASC
   `);
 
   // Get all properties
@@ -752,30 +1101,56 @@ const seedMatches = async (client: PoolClient) => {
   }
 
   // Create some likes and passes for each tenant
+  let isFirstTenant = true;
   for (const tenant of tenantsResult.rows) {
     const shuffledProperties = propertiesResult.rows.sort(() => Math.random() - 0.5);
     
     for (let i = 0; i < Math.min(5, shuffledProperties.length); i++) {
       const property = shuffledProperties[i];
-      const status = i < 3 ? 'interested' : 'declined'; // 3 likes, 2 passes
+      
+      // For the first tenant (9876540001), create ACTIVE (mutual) matches for the first 2 properties
+      // For others, create interested/declined
+      let status: string;
+      let landlordSwiped = false;
+      let landlordSwipeDirection: string | null = null;
+      
+      if (isFirstTenant && i < 2) {
+        // Create mutual match (both swiped right)
+        status = 'active';
+        landlordSwiped = true;
+        landlordSwipeDirection = 'right';
+      } else if (i < 3) {
+        status = 'interested';
+      } else {
+        status = 'declined';
+      }
+      
       const score = 50 + Math.floor(Math.random() * 45); // 50-95%
-      const swipeDir = i < 3 ? 'right' : 'left';
+      const swipeDir = status === 'declined' ? 'left' : 'right';
       
       await client.query(`
-        INSERT INTO matches (tenant_id, property_id, status, match_score, tenant_swiped, tenant_swipe_direction, tenant_swiped_at)
-        VALUES ($1, $2, $3, $4, true, $5, NOW())
-        ON CONFLICT (tenant_id, property_id) DO UPDATE SET status = $3, match_score = $4
+        INSERT INTO matches (tenant_id, property_id, status, match_score, tenant_swiped, tenant_swipe_direction, tenant_swiped_at, landlord_swiped, landlord_swipe_direction, landlord_swiped_at)
+        VALUES ($1, $2, $3, $4, true, $5, NOW(), $6, $7, ${landlordSwiped ? 'NOW()' : 'NULL'})
+        ON CONFLICT (tenant_id, property_id) DO UPDATE SET 
+          status = $3, 
+          match_score = $4,
+          landlord_swiped = $6,
+          landlord_swipe_direction = $7,
+          landlord_swiped_at = ${landlordSwiped ? 'NOW()' : 'NULL'}
       `, [
         tenant.id,
         property.id,
         status,
         score,
-        swipeDir
+        swipeDir,
+        landlordSwiped,
+        landlordSwipeDirection
       ]);
     }
+    isFirstTenant = false;
   }
 
-  console.log('✅ Matches seeded (likes and passes for each tenant)');
+  console.log('✅ Matches seeded (likes, passes, and mutual matches for first tenant)');
 };
 
 /**
@@ -849,9 +1224,9 @@ export const seedDatabase = async (): Promise<void> => {
       await seedTenantProfiles(client);
       await seedLandlordProfiles(client);
       await seedProperties(client);
-      await seedConversations(client);
+      await seedMatches(client);  // Matches first!
+      await seedConversations(client);  // Then conversations (depends on matches)
       await seedViewings(client);
-      await seedMatches(client);
       await seedReviews(client);
       await seedQuickReplies(client);
     });

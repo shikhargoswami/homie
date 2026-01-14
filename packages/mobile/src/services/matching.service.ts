@@ -37,6 +37,37 @@ export interface Property {
   matchScore?: number;
   matchReason?: string;
   commuteTime?: number;
+  // Lifestyle data
+  noise_levels?: {
+    morning?: number;
+    evening?: number;
+    night?: number;
+  };
+  sunlight_hours?: {
+    living?: number;
+    bedroom1?: number;
+    bedroom2?: number;
+    average?: number;
+  };
+  commute_matrix?: {
+    [key: string]: number;
+  };
+  neighborhood_pois?: {
+    cafes_500m?: number;
+    metro_distance_m?: number;
+    parks_1km?: number;
+    gyms_1km?: number;
+  };
+  pet_details?: {
+    dogs_allowed?: boolean;
+    cats_allowed?: boolean;
+    garden_access?: boolean;
+    max_weight_kg?: number;
+  };
+  // Match highlights for card display
+  match_highlights?: string[];
+  is_new?: boolean;
+  created_at?: string;
 }
 
 export interface RecommendationsResponse {

@@ -1,6 +1,7 @@
 import { pool } from '../database/client';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
+import { chatAntiBypassService } from './chat-antibypass.service';
 
 export interface Message {
   id: string;
@@ -9,7 +10,7 @@ export interface Message {
   content: string;
   message_type: 'text' | 'image' | 'viewing_request' | 'system';
   metadata?: Record<string, unknown>;
-  is_read: boolean;
+  read_at: Date | null;
   created_at: Date;
 }
 
@@ -88,10 +89,56 @@ export function initializeSocketIO(server: HTTPServer): SocketIOServer {
       }
 
       try {
+        // Check if user can send messages (not blocked/suspended)
+        const canSend = await chatAntiBypassService.canUserSendMessages(userId);
+        if (!canSend.allowed) {
+          socket.emit('error', { 
+            message: canSend.reason,
+            code: 'CHAT_BLOCKED'
+          });
+          return;
+        }
+
+        // Analyze message for policy violations (only for text messages)
+        let contentToSend = data.content;
+        let violationWarning: string | undefined;
+        
+        if (data.messageType === 'text' || !data.messageType) {
+          const analysis = chatAntiBypassService.analyzeMessage(data.content);
+          
+          if (analysis.isViolation) {
+            // Record the violation
+            const violationResult = await chatAntiBypassService.recordViolation(
+              userId,
+              data.conversationId,
+              analysis
+            );
+
+            // If user was blocked/suspended, reject the message
+            if (violationResult.userBlocked) {
+              socket.emit('error', {
+                message: 'Your account has been restricted due to policy violations.',
+                code: 'ACCOUNT_RESTRICTED'
+              });
+              return;
+            }
+
+            // Use sanitized message and warn user
+            contentToSend = analysis.sanitizedMessage || data.content;
+            violationWarning = analysis.warningMessage;
+            
+            // Emit warning to sender
+            socket.emit('policy_warning', {
+              message: analysis.warningMessage,
+              violationType: analysis.violationType,
+            });
+          }
+        }
+
         const message = await sendMessage(
           data.conversationId,
           userId,
-          data.content,
+          contentToSend,
           data.messageType || 'text',
           data.metadata
         );
@@ -273,7 +320,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
         FROM messages 
         WHERE conversation_id = c.id 
           AND sender_id != $1 
-          AND is_read = false
+          AND read_at IS NULL
       ) as unread_count
     FROM conversations c
     JOIN properties p ON c.property_id = p.id
@@ -353,10 +400,10 @@ export async function markMessagesAsRead(
 ): Promise<void> {
   await pool.query(
     `UPDATE messages 
-     SET is_read = true 
+     SET read_at = NOW() 
      WHERE conversation_id = $1 
        AND sender_id != $2 
-       AND is_read = false`,
+       AND read_at IS NULL`,
     [conversationId, userId]
   );
 }
@@ -371,7 +418,7 @@ export async function getUnreadCount(userId: string): Promise<number> {
      JOIN conversations c ON m.conversation_id = c.id
      WHERE (c.tenant_id = $1 OR c.landlord_id = $1)
        AND m.sender_id != $1
-       AND m.is_read = false`,
+       AND m.read_at IS NULL`,
     [userId]
   );
 
@@ -382,14 +429,14 @@ export async function getUnreadCount(userId: string): Promise<number> {
  * Get quick reply templates
  */
 export async function getQuickReplyTemplates(
-  category: 'greeting' | 'viewing' | 'negotiation' | 'general'
-): Promise<{ id: string; template: string; category: string }[]> {
+  role: 'tenant' | 'landlord' = 'tenant'
+): Promise<{ id: string; title: string; content: string; category: string }[]> {
   const result = await pool.query(
-    `SELECT id, template, category 
+    `SELECT id, title, content, category 
      FROM quick_reply_templates 
-     WHERE category = $1 AND is_active = true
-     ORDER BY template`,
-    [category]
+     WHERE user_role = $1 AND is_active = true
+     ORDER BY category, title`,
+    [role]
   );
 
   return result.rows;

@@ -24,7 +24,28 @@ import { apiClient } from '@services/api';
  * - Move-in date
  * - Amenities
  * - Nice-to-haves
+ * - Lifestyle Tags (tech-1.md)
+ * - Commute Preferences (tech-1.md)
  */
+
+// Lifestyle tag type from tech-1.md
+type LifestyleTag =
+  | 'pet_owner_dog'
+  | 'pet_owner_cat'
+  | 'musician_guitar'
+  | 'musician_drums'
+  | 'musician_keyboard'
+  | 'sunlight_lover'
+  | 'quiet_mornings'
+  | 'early_riser'
+  | 'night_owl'
+  | 'gym_nearby'
+  | 'cook_frequently'
+  | 'nightlife'
+  | 'wfh_heavy'
+  | 'social_gatherings'
+  | 'yoga_meditation'
+  | 'outdoor_activities';
 
 interface PreferencesData {
   nonNegotiables: {
@@ -46,6 +67,13 @@ interface PreferencesData {
     aestheticPreference?: 'modern' | 'traditional' | 'minimalist' | 'cozy';
     communityVibe?: 'social' | 'quiet' | 'family' | 'young_professionals';
   };
+  // New lifestyle fields (tech-1.md)
+  lifestyle?: {
+    tags: LifestyleTag[];
+    maxCommuteMinutes: number;
+    commuteMode: 'walk_metro' | 'car' | 'bike' | 'bus' | 'wfh' | 'any';
+    workLocation?: { lat: number; lng: number } | null;
+  };
 }
 
 const BHK_OPTIONS = ['1bhk', '2bhk', '3bhk', '4bhk'];
@@ -58,6 +86,35 @@ const FURNISHING_OPTIONS = [
 const AMENITIES = [
   'parking', 'gym', 'swimming_pool', 'security', 'power_backup',
   'lift', 'garden', 'club_house', 'children_play_area', 'wifi',
+];
+
+// Lifestyle tags with display labels (tech-1.md)
+const LIFESTYLE_TAGS: { value: LifestyleTag; label: string; icon: string }[] = [
+  { value: 'pet_owner_dog', label: '🐕 Dog Owner', icon: 'paw' },
+  { value: 'pet_owner_cat', label: '🐱 Cat Owner', icon: 'paw' },
+  { value: 'musician_guitar', label: '🎸 Guitarist', icon: 'musical-notes' },
+  { value: 'musician_drums', label: '🥁 Drummer', icon: 'musical-notes' },
+  { value: 'musician_keyboard', label: '🎹 Keyboardist', icon: 'musical-notes' },
+  { value: 'sunlight_lover', label: '☀️ Sunlight Lover', icon: 'sunny' },
+  { value: 'quiet_mornings', label: '🌅 Quiet Mornings', icon: 'moon' },
+  { value: 'early_riser', label: '🌄 Early Riser', icon: 'sunny' },
+  { value: 'night_owl', label: '🦉 Night Owl', icon: 'moon' },
+  { value: 'gym_nearby', label: '💪 Gym Nearby', icon: 'fitness' },
+  { value: 'cook_frequently', label: '👨‍🍳 Cook Frequently', icon: 'restaurant' },
+  { value: 'nightlife', label: '🎉 Nightlife', icon: 'wine' },
+  { value: 'wfh_heavy', label: '🏠 Work From Home', icon: 'laptop' },
+  { value: 'social_gatherings', label: '🎊 Social Events', icon: 'people' },
+  { value: 'yoga_meditation', label: '🧘 Yoga/Meditation', icon: 'leaf' },
+  { value: 'outdoor_activities', label: '🚴 Outdoor Activities', icon: 'bicycle' },
+];
+
+const COMMUTE_MODES: { value: string; label: string }[] = [
+  { value: 'any', label: 'Any Mode' },
+  { value: 'walk_metro', label: '🚇 Walk/Metro' },
+  { value: 'car', label: '🚗 Car' },
+  { value: 'bike', label: '🏍️ Bike' },
+  { value: 'bus', label: '🚌 Bus' },
+  { value: 'wfh', label: '🏠 WFH' },
 ];
 
 interface Props {
@@ -86,6 +143,12 @@ export const PreferencesScreen: React.FC<Props> = ({ navigation, route }) => {
     niceToHaves: {
       petFriendly: false,
       balconyPreference: false,
+    },
+    lifestyle: {
+      tags: [],
+      maxCommuteMinutes: 30,
+      commuteMode: 'any',
+      workLocation: null,
     },
   });
 
@@ -168,7 +231,40 @@ export const PreferencesScreen: React.FC<Props> = ({ navigation, route }) => {
       },
     }));
   };
+  // Toggle lifestyle tag (tech-1.md)
+  const toggleLifestyleTag = (tag: LifestyleTag) => {
+    setPreferences(prev => ({
+      ...prev,
+      lifestyle: {
+        ...prev.lifestyle!,
+        tags: prev.lifestyle?.tags.includes(tag)
+          ? prev.lifestyle.tags.filter(t => t !== tag)
+          : [...(prev.lifestyle?.tags || []), tag],
+      },
+    }));
+  };
 
+  // Set commute mode (tech-1.md)
+  const setCommuteMode = (mode: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      lifestyle: {
+        ...prev.lifestyle!,
+        commuteMode: mode as any,
+      },
+    }));
+  };
+
+  // Set max commute minutes (tech-1.md)
+  const setMaxCommuteMinutes = (minutes: number) => {
+    setPreferences(prev => ({
+      ...prev,
+      lifestyle: {
+        ...prev.lifestyle!,
+        maxCommuteMinutes: minutes,
+      },
+    }));
+  };
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -408,6 +504,88 @@ export const PreferencesScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
+        {/* Lifestyle Preferences Section (tech-1.md) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🎯 Lifestyle Preferences</Text>
+          <Text style={styles.sectionSubtitle}>
+            Help us find properties that match your lifestyle
+          </Text>
+          <View style={styles.chipContainer}>
+            {LIFESTYLE_TAGS.map((tag) => (
+              <TouchableOpacity
+                key={tag.value}
+                style={[
+                  styles.lifestyleChip,
+                  preferences.lifestyle?.tags.includes(tag.value) && styles.lifestyleChipSelected,
+                ]}
+                onPress={() => toggleLifestyleTag(tag.value)}
+              >
+                <Text
+                  style={[
+                    styles.lifestyleChipText,
+                    preferences.lifestyle?.tags.includes(tag.value) && styles.lifestyleChipTextSelected,
+                  ]}
+                >
+                  {tag.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Commute Preferences Section (tech-1.md) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🚗 Commute Preferences</Text>
+          
+          {/* Commute Mode */}
+          <Text style={styles.fieldLabel}>Preferred Commute Mode</Text>
+          <View style={styles.chipContainer}>
+            {COMMUTE_MODES.map((mode) => (
+              <TouchableOpacity
+                key={mode.value}
+                style={[
+                  styles.chip,
+                  preferences.lifestyle?.commuteMode === mode.value && styles.chipSelected,
+                ]}
+                onPress={() => setCommuteMode(mode.value)}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    preferences.lifestyle?.commuteMode === mode.value && styles.chipTextSelected,
+                  ]}
+                >
+                  {mode.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Max Commute Time */}
+          <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Max Commute Time</Text>
+          <View style={styles.commuteTimeRow}>
+            {[15, 30, 45, 60, 90].map((minutes) => (
+              <TouchableOpacity
+                key={minutes}
+                style={[
+                  styles.commuteTimeChip,
+                  preferences.lifestyle?.maxCommuteMinutes === minutes && styles.commuteTimeChipSelected,
+                ]}
+                onPress={() => setMaxCommuteMinutes(minutes)}
+              >
+                <Text
+                  style={[
+                    styles.commuteTimeText,
+                    preferences.lifestyle?.maxCommuteMinutes === minutes && styles.commuteTimeTextSelected,
+                  ]}
+                >
+                  {minutes} min
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -549,6 +727,67 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 16,
     color: '#1a1a1a',
+  },
+  // Lifestyle section styles (tech-1.md)
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#444',
+    marginBottom: 8,
+  },
+  lifestyleChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f8f8f8',
+    marginBottom: 6,
+    marginRight: 6,
+  },
+  lifestyleChipSelected: {
+    backgroundColor: '#eef2ff',
+    borderColor: '#6366f1',
+  },
+  lifestyleChipText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  lifestyleChipTextSelected: {
+    color: '#6366f1',
+    fontWeight: '500',
+  },
+  commuteTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  commuteTimeChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fafafa',
+    marginHorizontal: 3,
+    alignItems: 'center',
+  },
+  commuteTimeChipSelected: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  commuteTimeText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  commuteTimeTextSelected: {
+    color: '#fff',
   },
   footer: {
     position: 'absolute',

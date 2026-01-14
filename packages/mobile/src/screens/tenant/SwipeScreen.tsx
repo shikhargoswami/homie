@@ -10,12 +10,45 @@ import {
   ImageBackground,
   Animated,
   Platform,
+  ScrollView,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecommendations, useSwipe, useMatchStats } from '@hooks/useMatching';
 import { Property } from '@services/matching.service';
+
+
+
+// Filter options for the chips
+const FILTER_OPTIONS = {
+  budget: [
+    { label: '₹10-15k', value: { min: 10000, max: 15000 } },
+    { label: '₹15-20k', value: { min: 15000, max: 20000 } },
+    { label: '₹20-25k', value: { min: 20000, max: 25000 } },
+    { label: '₹25-35k', value: { min: 25000, max: 35000 } },
+    { label: '₹35k+', value: { min: 35000, max: 100000 } },
+  ],
+  bhk: [
+    { label: '1 BHK', value: '1bhk' },
+    { label: '2 BHK', value: '2bhk' },
+    { label: '3 BHK', value: '3bhk' },
+    { label: 'Studio', value: 'studio' },
+  ],
+  commute: [
+    { label: '<15 min', value: 15 },
+    { label: '<30 min', value: 30 },
+    { label: '<45 min', value: 45 },
+  ],
+  lifestyle: [
+    { label: '🐕 Pet-friendly', value: 'pet_friendly' },
+    { label: '☀️ High sunlight', value: 'high_sunlight' },
+    { label: '🔇 Quiet', value: 'quiet' },
+    { label: '🚇 Near metro', value: 'near_metro' },
+    { label: '🏋️ Gym nearby', value: 'gym_nearby' },
+  ],
+};
 
 // Create animated version of ImageBackground for smooth photo transitions
 const AnimatedImageBackground = Animated.createAnimatedComponent(ImageBackground);
@@ -40,10 +73,63 @@ interface Props {
 export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   const swiperRef = useRef<Swiper<Property>>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
+  
+  // Active filters state
+  const [activeFilters, setActiveFilters] = useState<{
+    budget?: { min: number; max: number };
+    bhk?: string;
+    commute?: number;
+    lifestyle: string[];
+  }>({ lifestyle: [] });
   
   const { data: properties, isLoading, refetch } = useRecommendations(20);
   const { mutate: swipe, isPending: isSwiping } = useSwipe();
   const { data: stats } = useMatchStats();
+
+  // Filter toggle handlers
+  const toggleBudgetFilter = (value: { min: number; max: number }) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      budget: prev.budget?.min === value.min ? undefined : value
+    }));
+  };
+
+  const toggleBhkFilter = (value: string) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      bhk: prev.bhk === value ? undefined : value
+    }));
+  };
+
+  const toggleCommuteFilter = (value: number) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      commute: prev.commute === value ? undefined : value
+    }));
+  };
+
+  const toggleLifestyleFilter = (value: string) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      lifestyle: prev.lifestyle.includes(value)
+        ? prev.lifestyle.filter(v => v !== value)
+        : [...prev.lifestyle, value]
+    }));
+  };
+
+  const clearAllFilters = () => {
+    setActiveFilters({ lifestyle: [] });
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (activeFilters.budget) count++;
+    if (activeFilters.bhk) count++;
+    if (activeFilters.commute) count++;
+    count += activeFilters.lifestyle.length;
+    return count;
+  };
 
   const handleSwipe = (index: number, direction: 'right' | 'left') => {
     if (!properties || index >= properties.length) return;
@@ -125,6 +211,83 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {/* Filter Chips Header */}
+      <View style={styles.filterHeader}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChipsContainer}
+        >
+          {/* Budget Chips */}
+          {FILTER_OPTIONS.budget.map((option) => (
+            <TouchableOpacity
+              key={option.label}
+              style={[
+                styles.filterChip,
+                activeFilters.budget?.min === option.value.min && styles.filterChipActive
+              ]}
+              onPress={() => toggleBudgetFilter(option.value)}
+            >
+              <Text style={[
+                styles.filterChipText,
+                activeFilters.budget?.min === option.value.min && styles.filterChipTextActive
+              ]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          
+          {/* BHK Chips */}
+          {FILTER_OPTIONS.bhk.map((option) => (
+            <TouchableOpacity
+              key={option.label}
+              style={[
+                styles.filterChip,
+                activeFilters.bhk === option.value && styles.filterChipActive
+              ]}
+              onPress={() => toggleBhkFilter(option.value)}
+            >
+              <Text style={[
+                styles.filterChipText,
+                activeFilters.bhk === option.value && styles.filterChipTextActive
+              ]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          
+          {/* Commute Chips */}
+          {FILTER_OPTIONS.commute.map((option) => (
+            <TouchableOpacity
+              key={option.label}
+              style={[
+                styles.filterChip,
+                activeFilters.commute === option.value && styles.filterChipActive
+              ]}
+              onPress={() => toggleCommuteFilter(option.value)}
+            >
+              <Text style={[
+                styles.filterChipText,
+                activeFilters.commute === option.value && styles.filterChipTextActive
+              ]}>
+                🚗 {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          
+          {/* More Filters Button */}
+          <TouchableOpacity
+            style={[styles.filterChip, styles.moreFiltersChip]}
+            onPress={() => setShowFiltersModal(true)}
+          >
+            <Ionicons name="options-outline" size={16} color="#6366f1" />
+            <Text style={[styles.filterChipText, styles.moreFiltersText]}>
+              More {getActiveFilterCount() > 0 ? `(${getActiveFilterCount()})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
       {/* Full-screen Swipe Cards */}
       <View style={styles.swiperContainer}>
         <Swiper
@@ -250,6 +413,149 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Advanced Filters Modal */}
+      <Modal
+        visible={showFiltersModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFiltersModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filters</Text>
+              <TouchableOpacity onPress={() => setShowFiltersModal(false)}>
+                <Ionicons name="close" size={24} color="#1a1a1a" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {/* Budget Section */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Budget Range</Text>
+                <View style={styles.filterOptionsGrid}>
+                  {FILTER_OPTIONS.budget.map((option) => (
+                    <TouchableOpacity
+                      key={option.label}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.budget?.min === option.value.min && styles.filterOptionActive
+                      ]}
+                      onPress={() => toggleBudgetFilter(option.value)}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        activeFilters.budget?.min === option.value.min && styles.filterOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* BHK Section */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Property Type</Text>
+                <View style={styles.filterOptionsGrid}>
+                  {FILTER_OPTIONS.bhk.map((option) => (
+                    <TouchableOpacity
+                      key={option.label}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.bhk === option.value && styles.filterOptionActive
+                      ]}
+                      onPress={() => toggleBhkFilter(option.value)}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        activeFilters.bhk === option.value && styles.filterOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Commute Section */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Commute Time ⏱️</Text>
+                <View style={styles.filterOptionsGrid}>
+                  {FILTER_OPTIONS.commute.map((option) => (
+                    <TouchableOpacity
+                      key={option.label}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.commute === option.value && styles.filterOptionActive
+                      ]}
+                      onPress={() => toggleCommuteFilter(option.value)}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        activeFilters.commute === option.value && styles.filterOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Lifestyle Section */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Lifestyle Filters 🎯</Text>
+                <View style={styles.filterOptionsGrid}>
+                  {FILTER_OPTIONS.lifestyle.map((option) => (
+                    <TouchableOpacity
+                      key={option.label}
+                      style={[
+                        styles.filterOption,
+                        styles.filterOptionWide,
+                        activeFilters.lifestyle.includes(option.value) && styles.filterOptionActive
+                      ]}
+                      onPress={() => toggleLifestyleFilter(option.value)}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        activeFilters.lifestyle.includes(option.value) && styles.filterOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Modal Footer */}
+            <View style={styles.modalFooter}>
+              <Text style={styles.filterCount}>
+                {properties?.length || 0} properties match
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={styles.clearButton}
+                  onPress={clearAllFilters}
+                >
+                  <Text style={styles.clearButtonText}>Clear All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.applyButton}
+                  onPress={() => {
+                    setShowFiltersModal(false);
+                    // TODO: Apply filters to recommendations API
+                  }}
+                >
+                  <Text style={styles.applyButtonText}>Apply Filters</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -474,15 +780,74 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onPress, stats, i
             </View>
           </View>
 
-          {/* Match Reason - Bottom */}
-          {property.matchReason ? (
-            <View style={styles.matchReasonWrapper}>
-              <View style={styles.matchReasonBackdrop} />
-              <Text style={styles.matchReason} numberOfLines={2}>
-                💡 {property.matchReason}
-              </Text>
+          {/* AI Match Highlights - Key differentiation */}
+          <View style={styles.matchHighlightsContainer}>
+            <View style={styles.matchHighlightsBackdrop} />
+            <View style={styles.matchHighlights}>
+              {/* Commute Time */}
+              {property.commuteTime && (
+                <View style={styles.highlightRow}>
+                  <Text style={styles.highlightIcon}>🚗</Text>
+                  <Text style={styles.highlightText}>{property.commuteTime} min to office</Text>
+                </View>
+              )}
+              {/* Sunlight - calculate average */}
+              {property.sunlight_hours?.average && (
+                <View style={styles.highlightRow}>
+                  <Text style={styles.highlightIcon}>☀️</Text>
+                  <Text style={styles.highlightText}>{property.sunlight_hours.average}+ hrs sunlight</Text>
+                </View>
+              )}
+              {/* Pet Friendly */}
+              {property.pet_details?.dogs_allowed && (
+                <View style={styles.highlightRow}>
+                  <Text style={styles.highlightIcon}>🐕</Text>
+                  <Text style={styles.highlightText}>Pet-friendly</Text>
+                </View>
+              )}
+              {/* Quiet Neighborhood */}
+              {property.noise_levels?.night && property.noise_levels.night < 40 && (
+                <View style={styles.highlightRow}>
+                  <Text style={styles.highlightIcon}>🔇</Text>
+                  <Text style={styles.highlightText}>Quiet area ({property.noise_levels.night} dB)</Text>
+                </View>
+              )}
+              {/* Nearby Metro */}
+              {property.neighborhood_pois?.metro_distance_m && property.neighborhood_pois.metro_distance_m < 1000 && (
+                <View style={styles.highlightRow}>
+                  <Text style={styles.highlightIcon}>🚇</Text>
+                  <Text style={styles.highlightText}>Metro {property.neighborhood_pois.metro_distance_m}m away</Text>
+                </View>
+              )}
+              {/* Show matchReason as fallback if no specific highlights */}
+              {!property.commuteTime && !property.sunlight_hours && !property.pet_details && property.matchReason && (
+                <View style={styles.highlightRow}>
+                  <Text style={styles.highlightIcon}>💡</Text>
+                  <Text style={styles.highlightText} numberOfLines={2}>{property.matchReason}</Text>
+                </View>
+              )}
             </View>
-          ) : null}
+          </View>
+
+          {/* Feature Indicators Row */}
+          <View style={styles.featureIndicators}>
+            {totalPhotos > 1 && (
+              <View style={styles.featureTag}>
+                <Ionicons name="images-outline" size={12} color="#fff" />
+                <Text style={styles.featureTagText}>{totalPhotos}</Text>
+              </View>
+            )}
+            {property.vr_tour_url && (
+              <View style={[styles.featureTag, styles.vrTag]}>
+                <Text style={styles.featureTagText}>🥽 VR</Text>
+              </View>
+            )}
+            {amenities.includes('parking') && (
+              <View style={styles.featureTag}>
+                <Ionicons name="car-outline" size={12} color="#fff" />
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -493,6 +858,155 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  // Filter Header Styles
+  filterHeader: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 30,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  filterChipsContainer: {
+    paddingHorizontal: 12,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  filterChip: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  filterChipActive: {
+    backgroundColor: '#6366f1',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  moreFiltersChip: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderWidth: 1,
+    borderColor: '#6366f1',
+  },
+  moreFiltersText: {
+    color: '#6366f1',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  modalScroll: {
+    padding: 16,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  filterOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  filterOption: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  filterOptionWide: {
+    minWidth: '45%',
+  },
+  filterOptionActive: {
+    backgroundColor: '#e0e7ff',
+    borderColor: '#6366f1',
+  },
+  filterOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  filterOptionTextActive: {
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+  },
+  filterCount: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
+  },
+  applyButton: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   loadingContainer: {
     flex: 1,
@@ -791,6 +1305,65 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '500',
     textTransform: 'capitalize',
+  },
+  matchHighlightsContainer: {
+    position: 'relative',
+    width: '100%',
+    marginTop: 8,
+  },
+  matchHighlightsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    borderRadius: 12,
+    marginHorizontal: -12,
+    marginVertical: -8,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  matchHighlights: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  highlightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  highlightIcon: {
+    fontSize: 14,
+  },
+  highlightText: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  featureIndicators: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  featureTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  featureTagText: {
+    fontSize: 11,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  vrTag: {
+    backgroundColor: 'rgba(99, 102, 241, 0.6)',
   },
   actionsContainer: {
     position: 'absolute',

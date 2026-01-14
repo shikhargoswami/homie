@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutualMatches } from '@hooks/useMatching';
+import { useChat } from '../../hooks/useChat';
 
 interface Props {
   navigation: any;
@@ -41,6 +43,8 @@ interface Match {
  */
 export const MatchesScreen: React.FC<Props> = ({ navigation }) => {
   const { data: matches, isLoading, refetch, isRefetching } = useMutualMatches();
+  const { startConversation } = useChat();
+  const [startingChat, setStartingChat] = useState<string | null>(null);
 
   const handleMatchPress = (match: Match) => {
     // Navigate to chat or property detail
@@ -58,8 +62,29 @@ export const MatchesScreen: React.FC<Props> = ({ navigation }) => {
     });
   };
 
-  const handleStartChat = (match: Match) => {
-    alert(`Chat with ${match.landlord_name} coming soon!`);
+  const handleStartChat = async (match: Match) => {
+    if (startingChat) return; // Prevent multiple clicks
+    
+    setStartingChat(match.id);
+    try {
+      const conversation = await startConversation(match.property_id);
+      if (conversation) {
+        navigation.navigate('Chat', { 
+          conversation: {
+            ...conversation,
+            property_title: `${match.address || match.neighborhood}`,
+            other_user_name: match.landlord_name,
+          }
+        });
+      } else {
+        Alert.alert('Error', 'Could not start conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      Alert.alert('Error', 'Could not start conversation. Please try again.');
+    } finally {
+      setStartingChat(null);
+    }
   };
 
   const renderEmptyState = () => (
@@ -123,10 +148,15 @@ export const MatchesScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Chat Button */}
       <TouchableOpacity 
-        style={styles.chatButton}
+        style={[styles.chatButton, startingChat === item.id && styles.chatButtonLoading]}
         onPress={() => handleStartChat(item)}
+        disabled={startingChat === item.id}
       >
-        <Ionicons name="chatbubble" size={20} color="#fff" />
+        {startingChat === item.id ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Ionicons name="chatbubble" size={20} color="#fff" />
+        )}
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -349,5 +379,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
+  },
+  chatButtonLoading: {
+    opacity: 0.7,
   },
 });

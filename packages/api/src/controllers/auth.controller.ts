@@ -546,7 +546,28 @@ export const getCurrentUser = async (
     
     res.status(200).json({
       success: true,
-      data: { user },
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          profileCompleted: user.profile_completed,
+          createdAt: user.created_at,
+          lastLoginAt: user.last_login_at,
+          // Include profile-specific data if available
+          ...(user.search_type && {
+            searchType: user.search_type,
+            budgetMin: user.budget_min,
+            budgetMax: user.budget_max,
+          }),
+          ...(user.subscription_tier && {
+            subscriptionTier: user.subscription_tier,
+            landlordRating: user.landlord_rating,
+          }),
+        },
+      },
     });
   } catch (error) {
     next(error);
