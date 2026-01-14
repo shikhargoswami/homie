@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecommendations, useSwipe, useMatchStats } from '@hooks/useMatching';
+import { usePreferences, findMatchingBudgetOption } from '@hooks/usePreferences';
 import { Property } from '@services/matching.service';
 
 
@@ -74,6 +75,7 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   const swiperRef = useRef<Swiper<Property>>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
   
   // Active filters state
   const [activeFilters, setActiveFilters] = useState<{
@@ -86,6 +88,173 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   const { data: properties, isLoading, refetch } = useRecommendations(20);
   const { mutate: swipe, isPending: isSwiping } = useSwipe();
   const { data: stats } = useMatchStats();
+  const { data: preferences, isLoading: isLoadingPreferences } = usePreferences();
+
+  // Initialize filters from user preferences when they load
+  useEffect(() => {
+    if (preferences && !filtersInitialized) {
+      const initialFilters: typeof activeFilters = { lifestyle: [] };
+
+      // Set budget filter from preferences
+      if (preferences.budget_min && preferences.budget_max) {
+        const matchingBudget = findMatchingBudgetOption(
+          preferences.budget_min,
+          preferences.budget_max,
+          FILTER_OPTIONS.budget
+        );
+        if (matchingBudget) {
+          initialFilters.budget = matchingBudget;
+        }
+      }
+
+      // Set BHK filter from preferences
+      if (preferences.preferred_configuration) {
+        const bhkValue = preferences.preferred_configuration.toLowerCase();
+        const matchingBhk = FILTER_OPTIONS.bhk.find(
+          opt => opt.value.toLowerCase() === bhkValue
+        );
+        if (matchingBhk) {
+          initialFilters.bhk = matchingBhk.value;
+        }
+      }
+
+      // Set commute filter from preferences
+      if (preferences.lifestyle?.maxCommuteMinutes) {
+        const maxCommute = preferences.lifestyle.maxCommuteMinutes;
+        // Find the matching or nearest commute option
+        const matchingCommute = FILTER_OPTIONS.commute.find(
+          opt => opt.value >= maxCommute
+        );
+        if (matchingCommute) {
+          initialFilters.commute = matchingCommute.value;
+        }
+      }
+
+      // Set lifestyle filters from preferences
+      const lifestyleFilters: string[] = [];
+
+      // Map pets_allowed to pet_friendly filter
+      if (preferences.pets_allowed) {
+        lifestyleFilters.push('pet_friendly');
+      }
+
+      // Map lifestyle tags to filter values
+      if (preferences.lifestyle?.tags) {
+        const tagMappings: Record<string, string> = {
+          'sunlight_lover': 'high_sunlight',
+          'quiet_mornings': 'quiet',
+          'gym_nearby': 'gym_nearby',
+        };
+
+        for (const tag of preferences.lifestyle.tags) {
+          const mappedValue = tagMappings[tag];
+          if (mappedValue && !lifestyleFilters.includes(mappedValue)) {
+            lifestyleFilters.push(mappedValue);
+          }
+        }
+      }
+
+      initialFilters.lifestyle = lifestyleFilters;
+
+      // Only apply if there are actual preferences set
+      const hasPreferences = 
+        initialFilters.budget || 
+        initialFilters.bhk || 
+        initialFilters.commute || 
+        initialFilters.lifestyle.length > 0;
+
+      if (hasPreferences) {
+        setActiveFilters(initialFilters);
+        console.log('🎯 Initialized filters from preferences:', initialFilters);
+      }
+
+      setFiltersInitialized(true);
+    }
+  }, [preferences, filtersInitialized]);
+
+  // Apply filters to properties
+  const filteredProperties = useMemo(() => {
+    if (!properties) return [];
+    
+    return properties.filter((property) => {
+      // Budget filter
+      if (activeFilters.budget) {
+        if (property.rent < activeFilters.budget.min || property.rent > activeFilters.budget.max) {
+          return false;
+        }
+      }
+      
+      // BHK filter
+      if (activeFilters.bhk) {
+        if (property.configuration?.toLowerCase() !== activeFilters.bhk.toLowerCase()) {
+          return false;
+        }
+      }
+      
+      // Commute filter - check if any commute time is within limit
+      if (activeFilters.commute) {
+        const commuteTime = property.commuteTime;
+        const commuteMatrix = property.commute_matrix;
+        
+        let hasValidCommute = false;
+        
+        if (commuteTime && commuteTime <= activeFilters.commute) {
+          hasValidCommute = true;
+        } else if (commuteMatrix) {
+          // Check if any destination is within commute limit
+          const commuteTimes = Object.values(commuteMatrix);
+          hasValidCommute = commuteTimes.some((time) => time <= activeFilters.commute!);
+        }
+        
+        if (!hasValidCommute) {
+          return false;
+        }
+      }
+      
+      // Lifestyle filters
+      for (const lifestyle of activeFilters.lifestyle) {
+        switch (lifestyle) {
+          case 'pet_friendly':
+            if (!property.pet_details?.dogs_allowed && !property.pet_details?.cats_allowed) {
+              return false;
+            }
+            break;
+          case 'high_sunlight':
+            const avgSunlight = property.sunlight_hours?.average || 
+              (property.sunlight_hours?.living ? 
+                (property.sunlight_hours.living + (property.sunlight_hours.bedroom1 || 0)) / 2 : 0);
+            if (avgSunlight < 5) {
+              return false;
+            }
+            break;
+          case 'quiet':
+            const noiseLevel = property.noise_levels?.morning || property.noise_levels?.evening;
+            if (noiseLevel && noiseLevel > 50) {
+              return false;
+            }
+            break;
+          case 'near_metro':
+            if (!property.neighborhood_pois?.metro_distance_m || property.neighborhood_pois.metro_distance_m > 1000) {
+              return false;
+            }
+            break;
+          case 'gym_nearby':
+            if (!property.neighborhood_pois?.gyms_1km || property.neighborhood_pois.gyms_1km < 1) {
+              return false;
+            }
+            break;
+        }
+      }
+      
+      return true;
+    });
+  }, [properties, activeFilters]);
+
+  // Reset swiper index when filters change
+  React.useEffect(() => {
+    setCurrentIndex(0);
+    swiperRef.current?.jumpToCardIndex?.(0);
+  }, [activeFilters]);
 
   // Filter toggle handlers
   const toggleBudgetFilter = (value: { min: number; max: number }) => {
@@ -132,9 +301,9 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSwipe = (index: number, direction: 'right' | 'left') => {
-    if (!properties || index >= properties.length) return;
+    if (!filteredProperties || index >= filteredProperties.length) return;
 
-    const property = properties[index];
+    const property = filteredProperties[index];
     
     swipe(
       { propertyId: property.id, direction },
@@ -170,9 +339,9 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSwipeTop = (index: number) => {
-    if (!properties || index >= properties.length) return;
+    if (!filteredProperties || index >= filteredProperties.length) return;
     
-    const property = properties[index];
+    const property = filteredProperties[index];
     
     swipe({ propertyId: property.id, direction: 'super' }, {
       onSuccess: () => {
@@ -182,14 +351,19 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleCardPress = (property: Property) => {
-    navigation.navigate('PropertyDetail', { property });
+    navigation.navigate('PropertyDetail', { property, isMatched: false });
   };
 
-  if (isLoading) {
+  // Show loading state while fetching properties or preferences
+  if (isLoading || isLoadingPreferences) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Finding perfect homes for you...</Text>
+        <Text style={styles.loadingText}>
+          {isLoadingPreferences 
+            ? 'Loading your preferences...' 
+            : 'Finding perfect homes for you...'}
+        </Text>
       </View>
     );
   }
@@ -205,6 +379,82 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity style={styles.refreshButton} onPress={() => refetch()}>
           <Text style={styles.refreshButtonText}>Refresh</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Show empty state when filters return no results
+  if (filteredProperties.length === 0) {
+    return (
+      <View style={styles.container}>
+        {/* Filter Chips Header - still show so user can adjust filters */}
+        <View style={styles.filterHeader}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterChipsContainer}
+          >
+            {/* Budget Chips */}
+            {FILTER_OPTIONS.budget.map((option) => (
+              <TouchableOpacity
+                key={option.label}
+                style={[
+                  styles.filterChip,
+                  activeFilters.budget?.min === option.value.min && styles.filterChipActive
+                ]}
+                onPress={() => toggleBudgetFilter(option.value)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  activeFilters.budget?.min === option.value.min && styles.filterChipTextActive
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            
+            {/* BHK Chips */}
+            {FILTER_OPTIONS.bhk.map((option) => (
+              <TouchableOpacity
+                key={option.label}
+                style={[
+                  styles.filterChip,
+                  activeFilters.bhk === option.value && styles.filterChipActive
+                ]}
+                onPress={() => toggleBhkFilter(option.value)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  activeFilters.bhk === option.value && styles.filterChipTextActive
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            
+            {/* Clear Filters Button */}
+            {getActiveFilterCount() > 0 && (
+              <TouchableOpacity
+                style={[styles.filterChip, styles.clearFiltersChip]}
+                onPress={clearAllFilters}
+              >
+                <Ionicons name="close-circle" size={16} color="#ef4444" />
+                <Text style={[styles.filterChipText, styles.clearFiltersText]}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </View>
+        
+        <View style={styles.emptyContainer}>
+          <Ionicons name="filter-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyTitle}>No Matching Properties</Text>
+          <Text style={styles.emptyText}>
+            Try adjusting your filters to see more properties
+          </Text>
+          <TouchableOpacity style={styles.refreshButton} onPress={clearAllFilters}>
+            <Text style={styles.refreshButtonText}>Clear Filters</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -292,7 +542,8 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.swiperContainer}>
         <Swiper
           ref={swiperRef}
-          cards={properties}
+          cards={filteredProperties}
+          key={`swiper-${getActiveFilterCount()}`}
           renderCard={(property, cardIndex) => (
             <PropertyCard 
               property={property} 
@@ -304,7 +555,7 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
           onSwipedLeft={handleSwipeLeft}
           onSwipedRight={handleSwipeRight}
           onSwipedTop={handleSwipeTop}
-          cardIndex={currentIndex}
+          cardIndex={0}
           backgroundColor="transparent"
           stackSize={3}
           stackScale={5}
@@ -901,6 +1152,14 @@ const styles = StyleSheet.create({
   },
   moreFiltersText: {
     color: '#6366f1',
+  },
+  clearFiltersChip: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  clearFiltersText: {
+    color: '#ef4444',
   },
   // Modal Styles
   modalOverlay: {

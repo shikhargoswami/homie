@@ -96,6 +96,102 @@ describe('Matching Service', () => {
         expect(property1Match.matchScore).toBeGreaterThan(60);
       }
     });
+
+    it('should filter by BHK configuration from preferences', async () => {
+      // Create a property with wrong BHK
+      const wrongBhkProperty = await createTestProperty(landlord.id, {
+        rent: 25000,
+        neighborhood: 'Koramangala',
+        configuration: '4bhk', // tenant wants 2bhk or 3bhk
+        furnishing: 'semi_furnished',
+        amenities: JSON.stringify(['gym', 'parking']),
+      });
+
+      const recommendations = await matchingService.getRecommendations(tenant.id, 10);
+      
+      // 4bhk property should have lower score or be filtered
+      const wrongBhkMatch = recommendations.find(r => r.propertyId === wrongBhkProperty.id);
+      const correctBhkMatch = recommendations.find(r => r.propertyId === property1.id);
+      
+      if (wrongBhkMatch && correctBhkMatch) {
+        expect(correctBhkMatch.matchScore).toBeGreaterThan(wrongBhkMatch.matchScore);
+      }
+    });
+
+    it('should filter by furnishing preference', async () => {
+      // Create unfurnished property when tenant prefers semi-furnished
+      const unfurnishedProperty = await createTestProperty(landlord.id, {
+        rent: 28000,
+        neighborhood: 'Koramangala',
+        configuration: '2bhk',
+        furnishing: 'unfurnished', // tenant prefers semi_furnished
+        amenities: JSON.stringify(['gym', 'parking']),
+      });
+
+      const recommendations = await matchingService.getRecommendations(tenant.id, 10);
+      
+      const semiFurnishedMatch = recommendations.find(r => r.propertyId === property1.id);
+      const unfurnishedMatch = recommendations.find(r => r.propertyId === unfurnishedProperty.id);
+      
+      // Semi-furnished should score higher than unfurnished
+      if (semiFurnishedMatch && unfurnishedMatch) {
+        expect(semiFurnishedMatch.matchScore).toBeGreaterThanOrEqual(unfurnishedMatch.matchScore);
+      }
+    });
+
+    it('should boost score for properties with matching amenities', async () => {
+      // Create property with all required amenities
+      const fullAmenitiesProperty = await createTestProperty(landlord.id, {
+        rent: 32000,
+        neighborhood: 'Koramangala',
+        configuration: '2bhk',
+        furnishing: 'semi_furnished',
+        amenities: JSON.stringify(['gym', 'parking', 'swimming_pool', 'power_backup']),
+      });
+
+      // Create property with no amenities
+      const noAmenitiesProperty = await createTestProperty(landlord.id, {
+        rent: 32000,
+        neighborhood: 'Koramangala',
+        configuration: '2bhk',
+        furnishing: 'semi_furnished',
+        amenities: JSON.stringify([]),
+      });
+
+      const recommendations = await matchingService.getRecommendations(tenant.id, 10);
+      
+      const fullAmenitiesMatch = recommendations.find(r => r.propertyId === fullAmenitiesProperty.id);
+      const noAmenitiesMatch = recommendations.find(r => r.propertyId === noAmenitiesProperty.id);
+      
+      // Both should be included in recommendations
+      // Full amenities property should have equal or higher score
+      if (fullAmenitiesMatch && noAmenitiesMatch) {
+        expect(fullAmenitiesMatch.matchScore).toBeGreaterThanOrEqual(noAmenitiesMatch.matchScore);
+      }
+    });
+
+    it('should return empty array when no properties match budget', async () => {
+      // Create tenant with very restrictive budget
+      const poorTenant = await createTestUser({ phone: '9876543299', role: 'tenant' });
+      await query(
+        `INSERT INTO tenant_profiles (user_id, search_type, budget_min, budget_max, preferences)
+         VALUES ($1, 'full_home', 1000, 5000, $2)`,
+        [
+          poorTenant.id,
+          JSON.stringify({
+            nonNegotiables: {
+              budget: { min: 1000, max: 5000 },
+              bhkType: ['2bhk'],
+            },
+          }),
+        ]
+      );
+
+      const recommendations = await matchingService.getRecommendations(poorTenant.id, 10);
+      
+      // All properties are above ₹5000, so no matches
+      expect(recommendations.length).toBe(0);
+    });
     
     it('should cache recommendations', async () => {
       // First call

@@ -20,6 +20,7 @@ import { LandlordOnboardingScreen } from '../screens/auth/LandlordOnboardingScre
 import { SwipeScreen } from '../screens/tenant/SwipeScreen';
 import { PropertyDetailScreen } from '../screens/tenant/PropertyDetailScreen';
 import { ProfileScreen } from '../screens/tenant/ProfileScreen';
+import { EditProfileScreen } from '../screens/tenant/EditProfileScreen';
 import { MatchesScreen } from '../screens/tenant/MatchesScreen';
 import { PreferencesScreen } from '../screens/tenant/PreferencesScreen';
 
@@ -45,9 +46,10 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   MainTabs: undefined;
-  PropertyDetail: { property: Property };
+  PropertyDetail: { property: Property; isMatched?: boolean };
   Chat: { conversationId: string };
   Preferences: { isOnboarding?: boolean };
+  EditProfile: undefined;
   Viewings: { userRole: 'tenant' | 'landlord' };
   ScheduleViewing: { propertyId: string; propertyAddress: string; landlordName: string };
 };
@@ -56,7 +58,7 @@ export type LandlordStackParamList = {
   LandlordTabs: undefined;
   AddProperty: undefined;
   EditProperty: { propertyId: string };
-  PropertyDetail: { property: Property };
+  PropertyDetail: { property: Property; isMatched?: boolean };
   Chat: { conversationId: string };
   Viewings: { userRole: 'tenant' | 'landlord' };
 };
@@ -278,6 +280,7 @@ const MainAppStack = () => {
       <AppStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
       <AppStack.Screen name="Chat" component={ChatScreen} />
       <AppStack.Screen name="Preferences" component={PreferencesScreen} />
+      <AppStack.Screen name="EditProfile" component={EditProfileScreen} />
       <AppStack.Screen name="Viewings" component={ViewingsScreen} />
       <AppStack.Screen name="ScheduleViewing" component={ScheduleViewingScreen} />
     </AppStack.Navigator>

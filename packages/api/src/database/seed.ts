@@ -26,7 +26,11 @@ const seedUsers = async (client: PoolClient) => {
     await client.query(`
       INSERT INTO users (phone, email, name, role, profile_completed)
       VALUES ($1, $2, $3, 'tenant', true)
-      ON CONFLICT (phone) DO NOTHING
+      ON CONFLICT (phone) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        role = EXCLUDED.role,
+        profile_completed = EXCLUDED.profile_completed
     `, [tenant.phone, tenant.email, tenant.name]);
   }
   
@@ -43,7 +47,11 @@ const seedUsers = async (client: PoolClient) => {
     await client.query(`
       INSERT INTO users (phone, email, name, role, profile_completed)
       VALUES ($1, $2, $3, 'tenant', true)
-      ON CONFLICT (phone) DO NOTHING
+      ON CONFLICT (phone) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        role = EXCLUDED.role,
+        profile_completed = EXCLUDED.profile_completed
     `, [tenant.phone, tenant.email, tenant.name]);
   }
   
@@ -60,7 +68,11 @@ const seedUsers = async (client: PoolClient) => {
     await client.query(`
       INSERT INTO users (phone, email, name, role, profile_completed)
       VALUES ($1, $2, $3, 'landlord', true)
-      ON CONFLICT (phone) DO NOTHING
+      ON CONFLICT (phone) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        role = EXCLUDED.role,
+        profile_completed = EXCLUDED.profile_completed
     `, [landlord.phone, landlord.email, landlord.name]);
   }
   
@@ -1084,10 +1096,10 @@ const seedViewings = async (client: PoolClient) => {
 const seedMatches = async (client: PoolClient) => {
   console.log('📝 Seeding matches...');
 
-  // Get tenants - order by phone to get test user first
+  // Get tenants - specifically target the test user 9876540001 first for reliable testing
   const tenantsResult = await client.query(`
     SELECT id, phone FROM users WHERE role = 'tenant' AND profile_completed = true
-    ORDER BY phone ASC
+    ORDER BY CASE WHEN phone = '9876540001' THEN 0 ELSE 1 END, phone ASC
   `);
 
   // Get all properties
@@ -1101,20 +1113,20 @@ const seedMatches = async (client: PoolClient) => {
   }
 
   // Create some likes and passes for each tenant
-  let isFirstTenant = true;
   for (const tenant of tenantsResult.rows) {
+    const isTestUser = tenant.phone === '9876540001';
     const shuffledProperties = propertiesResult.rows.sort(() => Math.random() - 0.5);
     
     for (let i = 0; i < Math.min(5, shuffledProperties.length); i++) {
       const property = shuffledProperties[i];
       
-      // For the first tenant (9876540001), create ACTIVE (mutual) matches for the first 2 properties
+      // For the test user (9876540001), create ACTIVE (mutual) matches for the first 2 properties
       // For others, create interested/declined
       let status: string;
       let landlordSwiped = false;
       let landlordSwipeDirection: string | null = null;
       
-      if (isFirstTenant && i < 2) {
+      if (isTestUser && i < 2) {
         // Create mutual match (both swiped right)
         status = 'active';
         landlordSwiped = true;
@@ -1147,10 +1159,9 @@ const seedMatches = async (client: PoolClient) => {
         landlordSwipeDirection
       ]);
     }
-    isFirstTenant = false;
   }
 
-  console.log('✅ Matches seeded (likes, passes, and mutual matches for first tenant)');
+  console.log('✅ Matches seeded (likes, passes, and mutual matches for test user 9876540001)');
 };
 
 /**

@@ -118,10 +118,15 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      // Call logout endpoint (blacklist token)
-      await apiClient.post('/api/auth/logout');
+      // Only call logout API if we have a token
+      const token = await this.getAccessToken();
+      if (token) {
+        // Call logout endpoint (blacklist token)
+        await apiClient.post('/api/auth/logout');
+      }
     } catch (error) {
-      console.error('Logout API call failed:', error);
+      // Silently ignore logout API errors - the important part is clearing local storage
+      console.log('Logout API call skipped or failed (this is okay):', error);
     } finally {
       // Clear local storage regardless of API call result
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);

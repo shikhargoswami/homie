@@ -158,11 +158,49 @@ export const PreferencesScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const loadPreferences = async () => {
     try {
-      const response = await apiClient.get<{ success: boolean; data: { preferences: PreferencesData } }>(
+      const response = await apiClient.get<{ success: boolean; data: { preferences: any } }>(
         '/api/users/preferences'
       );
-      if (response.success && response.data.preferences) {
-        setPreferences(response.data.preferences);
+      if (response.success && response.data?.preferences) {
+        const apiPrefs = response.data.preferences;
+        
+        // Transform API response to component's expected format
+        // Handle both flat API format and nested format
+        const budgetMin = apiPrefs.budget_min ?? apiPrefs.nonNegotiables?.budget?.min ?? 10000;
+        const budgetMax = apiPrefs.budget_max ?? apiPrefs.nonNegotiables?.budget?.max ?? 50000;
+        const location = apiPrefs.preferred_locations?.[0] ?? apiPrefs.nonNegotiables?.location ?? '';
+        const bhkConfig = apiPrefs.preferred_configuration ?? apiPrefs.nonNegotiables?.bhkType?.[0] ?? '2bhk';
+        
+        setPreferences({
+          nonNegotiables: {
+            budget: { 
+              min: budgetMin, 
+              max: budgetMax 
+            },
+            location: location,
+            bhkType: Array.isArray(bhkConfig) ? bhkConfig : [bhkConfig],
+            furnishing: apiPrefs.preferred_furnishing || 'any',
+            moveInDate: apiPrefs.move_in_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          },
+          mustHaves: {
+            amenities: apiPrefs.preferred_amenities || [],
+            homeOfficeSpace: apiPrefs.homeOfficeSpace || false,
+            gatedCommunity: apiPrefs.gatedCommunity || false,
+            maxCommute: apiPrefs.lifestyle?.maxCommuteMinutes,
+          },
+          niceToHaves: {
+            petFriendly: apiPrefs.pets_allowed || false,
+            balconyPreference: apiPrefs.balconyPreference || false,
+            aestheticPreference: apiPrefs.aestheticPreference,
+            communityVibe: apiPrefs.communityVibe,
+          },
+          lifestyle: {
+            tags: apiPrefs.lifestyle?.tags || [],
+            maxCommuteMinutes: apiPrefs.lifestyle?.maxCommuteMinutes || 30,
+            commuteMode: apiPrefs.lifestyle?.commuteMode || 'any',
+            workLocation: apiPrefs.lifestyle?.workLocation || null,
+          },
+        });
       }
     } catch (error) {
       console.log('No existing preferences found, using defaults');
@@ -184,7 +222,24 @@ export const PreferencesScreen: React.FC<Props> = ({ navigation, route }) => {
 
     setIsSaving(true);
     try {
-      await apiClient.put('/api/users/preferences', { preferences });
+      // Transform component data to API format
+      const apiPayload = {
+        budget_min: preferences.nonNegotiables.budget.min,
+        budget_max: preferences.nonNegotiables.budget.max,
+        preferred_locations: preferences.nonNegotiables.location ? [preferences.nonNegotiables.location] : [],
+        preferred_configuration: preferences.nonNegotiables.bhkType[0] || '2bhk',
+        preferred_furnishing: preferences.nonNegotiables.furnishing,
+        move_in_date: preferences.nonNegotiables.moveInDate,
+        preferred_amenities: preferences.mustHaves.amenities,
+        pets_allowed: preferences.niceToHaves.petFriendly,
+        lifestyle_tags: preferences.lifestyle?.tags || [],
+        max_commute_minutes: preferences.lifestyle?.maxCommuteMinutes || 30,
+        commute_mode: preferences.lifestyle?.commuteMode || 'any',
+        work_location_lat: preferences.lifestyle?.workLocation?.lat || null,
+        work_location_lng: preferences.lifestyle?.workLocation?.lng || null,
+      };
+      
+      await apiClient.put('/api/users/preferences', apiPayload);
       
       Alert.alert('Success', 'Your preferences have been saved!', [
         {

@@ -40,11 +40,11 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleEditProfile = () => {
-    Alert.alert('Coming Soon', 'Edit profile feature is coming soon!');
+    navigation.navigate('EditProfile');
   };
 
   const handlePreferences = () => {
-    Alert.alert('Coming Soon', 'Preferences editor is coming soon!');
+    navigation.navigate('Preferences');
   };
 
   const handleSupport = () => {

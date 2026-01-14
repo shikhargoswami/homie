@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
-import { api } from '../services/api';
+import { apiClient } from '../services/api';
 import type { User, AuthResponse, OTPResponse } from '../services/auth.service';
 
 // 🔧 DEV FLAG: Set to true to always start from login screen
@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (DEV_RESET_TEST_USER) {
           try {
             console.log('🔧 DEV: Resetting test user data...');
-            await api.post('/api/auth/dev/reset-test-user');
+            await apiClient.post('/api/auth/dev/reset-test-user');
             console.log('✅ DEV: Test user reset complete');
           } catch (error) {
             console.log('⚠️ DEV: Could not reset test user (may not exist yet)');
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (DEV_RESET_TEST_USER && phone === '9999999999') {
         try {
           console.log('🔧 DEV: Resetting test user before login...');
-          await api.post('/api/auth/dev/reset-test-user');
+          await apiClient.post('/api/auth/dev/reset-test-user');
           console.log('✅ DEV: Test user reset before login');
         } catch (error) {
           console.log('⚠️ DEV: Could not reset test user before login');

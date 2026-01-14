@@ -58,7 +58,8 @@ export const MatchesScreen: React.FC<Props> = ({ navigation }) => {
         photos: match.photos || [],
         landlord_name: match.landlord_name,
         matchScore: match.match_score,
-      }
+      },
+      isMatched: true,
     });
   };
 

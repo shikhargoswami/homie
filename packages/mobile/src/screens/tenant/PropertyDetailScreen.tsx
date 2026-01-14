@@ -18,7 +18,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Define navigation param list for this screen
 type RootStackParamList = {
-  PropertyDetail: { property: Property };
+  PropertyDetail: { property: Property; isMatched?: boolean };
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetail'>;
@@ -84,7 +84,7 @@ const ExpandableSection: React.FC<ExpandableSectionProps> = ({
  * with expandable sections for lifestyle data
  */
 export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { property } = route.params;
+  const { property, isMatched = false } = route.params;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const photos = property.photos || [];
 
@@ -503,21 +503,23 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
           </View>
         </ExpandableSection>
 
-        {/* Spacer for bottom button */}
-        <View style={{ height: 120 }} />
+        {/* Spacer for bottom button - only needed when matched */}
+        {isMatched && <View style={{ height: 120 }} />}
       </ScrollView>
 
-      {/* Fixed Bottom Actions */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.scheduleButton} onPress={handleScheduleVisit}>
-          <Ionicons name="calendar-outline" size={20} color="#6366f1" />
-          <Text style={styles.scheduleButtonText}>Schedule Visit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.chatButton} onPress={handleContactLandlord}>
-          <Ionicons name="chatbubble-outline" size={20} color="#fff" />
-          <Text style={styles.chatButtonText}>Chat Now</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Fixed Bottom Actions - Only show when matched */}
+      {isMatched && (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity style={styles.scheduleButton} onPress={handleScheduleVisit}>
+            <Ionicons name="calendar-outline" size={20} color="#6366f1" />
+            <Text style={styles.scheduleButtonText}>Schedule Visit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.chatButton} onPress={handleContactLandlord}>
+            <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+            <Text style={styles.chatButtonText}>Chat Now</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
