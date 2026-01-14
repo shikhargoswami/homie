@@ -12,6 +12,12 @@ import {
   getPendingRequests,
   getRecentMatches,
 } from '../controllers/property.controller';
+import {
+  getTenantSwipeFeed,
+  recordLandlordSwipe,
+  getPendingSwipeCount,
+  declineAllPendingSwipes,
+} from '../controllers/landlord-swipe.controller';
 
 const router = express.Router();
 
@@ -44,3 +50,9 @@ landlordRoutes.patch('/properties/:id/status', updatePropertyStatus);
 landlordRoutes.get('/stats', getLandlordStats);
 landlordRoutes.get('/pending-requests', getPendingRequests);
 landlordRoutes.get('/recent-matches', getRecentMatches);
+
+// Landlord Swipe Feature - Tenant Swipe Feed (Two-sided matching)
+landlordRoutes.get('/swipe/feed', getTenantSwipeFeed);
+landlordRoutes.post('/swipe', recordLandlordSwipe);
+landlordRoutes.get('/swipe/count', getPendingSwipeCount);
+landlordRoutes.post('/swipe/decline-all/:propertyId', declineAllPendingSwipes);

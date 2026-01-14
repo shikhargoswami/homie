@@ -2,3 +2,4 @@
 export { DashboardScreen } from './DashboardScreen';
 export { MyPropertiesScreen } from './MyPropertiesScreen';
 export { AddPropertyScreen } from './AddPropertyScreen';
+export { LandlordMatchesScreen } from './LandlordMatchesScreen';

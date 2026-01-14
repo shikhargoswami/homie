@@ -22,7 +22,8 @@ interface Match {
   id: string;
   property_id: string;
   match_score: number;
-  status: string;
+  match_status: string;
+  property_status?: string;
   created_at: string;
   updated_at: string;
   // Property details

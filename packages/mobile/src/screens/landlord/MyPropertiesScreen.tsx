@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { apiClient } from '@services/api';
 
 /**
@@ -22,7 +22,14 @@ import { apiClient } from '@services/api';
  * - Edit property details
  * - View tenant inquiries
  * - Toggle listing status
+ * 
+ * Route params:
+ *   - filter: 'all' | 'available' | 'rented' (optional, defaults to 'all')
  */
+
+type PropertiesRouteParams = {
+  Properties: { filter?: 'all' | 'available' | 'rented' };
+};
 
 interface Property {
   id: string;
@@ -44,17 +51,31 @@ interface Props {
 }
 
 export const MyPropertiesScreen: React.FC<Props> = ({ navigation }) => {
+  const route = useRoute<RouteProp<PropertiesRouteParams, 'Properties'>>();
+  const initialFilter = route.params?.filter || 'all';
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [filter, setFilter] = useState<'all' | 'available' | 'rented'>('all');
+  const [filter, setFilter] = useState<'all' | 'available' | 'rented'>(initialFilter);
 
-  const loadProperties = async (showRefresh = false) => {
+  // Update filter when route params change
+  useEffect(() => {
+    if (route.params?.filter && route.params.filter !== filter) {
+      setFilter(route.params.filter);
+    }
+  }, [route.params?.filter]);
+
+  const loadProperties = async (showRefresh = false, statusFilter?: string) => {
     if (showRefresh) setIsRefreshing(true);
     
     try {
+      // Use the provided filter or current filter state
+      const queryFilter = statusFilter || filter;
+      const queryParam = queryFilter !== 'all' ? `?status=${queryFilter}` : '';
+      
       const response = await apiClient.get<{ success: boolean; data: { properties: Property[] } }>(
-        '/api/landlord/properties'
+        `/api/landlord/properties${queryParam}`
       );
       
       if (response.success) {
@@ -101,14 +122,20 @@ export const MyPropertiesScreen: React.FC<Props> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      loadProperties();
-    }, [])
+      // Load with the route params filter if provided, otherwise use current filter
+      const filterToUse = route.params?.filter || filter;
+      loadProperties(false, filterToUse);
+    }, [route.params?.filter])
   );
 
-  const filteredProperties = properties.filter((p) => {
-    if (filter === 'all') return true;
-    return p.status === filter;
-  });
+  // Reload when filter changes (user taps filter button)
+  useEffect(() => {
+    loadProperties(false, filter);
+  }, [filter]);
+
+  // Since we're filtering on the API side, we can just use the properties directly
+  // But keep client-side filter for responsiveness when user changes filter tabs
+  const displayProperties = properties;
 
   const handleToggleStatus = async (property: Property) => {
     const newStatus = property.status === 'available' ? 'rented' : 'available';
@@ -283,12 +310,12 @@ export const MyPropertiesScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Properties List */}
       <FlatList
-        data={filteredProperties}
+        data={displayProperties}
         renderItem={renderProperty}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={() => loadProperties(true)} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => loadProperties(true, filter)} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>

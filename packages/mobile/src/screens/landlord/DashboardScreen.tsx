@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,115 +12,88 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { apiClient } from '@services/api';
+import { useLandlord } from '../../contexts/LandlordContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Helper functions for viewing status
+const formatViewingStatus = (status: string): string => {
+  switch (status) {
+    case 'proposed': return 'Pending';
+    case 'confirmed': return 'Confirmed';
+    case 'completed': return 'Completed';
+    case 'cancelled': return 'Cancelled';
+    case 'rescheduled': return 'Rescheduled';
+    default: return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+};
+
+const getViewingStatusStyle = (status: string) => {
+  switch (status) {
+    case 'proposed': return { backgroundColor: '#FEF3C7' };
+    case 'confirmed': return { backgroundColor: '#D1FAE5' };
+    case 'completed': return { backgroundColor: '#EEF2FF' };
+    case 'cancelled': return { backgroundColor: '#FEE2E2' };
+    case 'rescheduled': return { backgroundColor: '#FCE7F3' };
+    default: return { backgroundColor: '#F3F4F6' };
+  }
+};
+
+const getViewingStatusTextStyle = (status: string) => {
+  switch (status) {
+    case 'proposed': return { color: '#D97706' };
+    case 'confirmed': return { color: '#059669' };
+    case 'completed': return { color: '#6366f1' };
+    case 'cancelled': return { color: '#DC2626' };
+    case 'rescheduled': return { color: '#DB2777' };
+    default: return { color: '#6B7280' };
+  }
+};
 
 /**
  * Landlord Dashboard Screen
  * 
  * Shows:
- * - Property statistics
- * - Pending tenant requests
- * - Recent matches
+ * - Property statistics (clickable cards)
+ * - Viewing requests section
  * - Quick actions
+ * 
+ * Uses LandlordContext for centralized state management
  */
-
-interface DashboardStats {
-  totalProperties: number;
-  activeListings: number;
-  pendingRequests: number;
-  totalMatches: number;
-  viewingsThisWeek: number;
-  responseRate: number;
-}
-
-interface PendingRequest {
-  id: string;
-  tenantName: string;
-  tenantPhone: string;
-  propertyTitle: string;
-  propertyId: string;
-  requestedAt: string;
-  type: 'viewing' | 'application';
-}
-
-interface RecentMatch {
-  id: string;
-  tenantName: string;
-  propertyTitle: string;
-  matchedAt: string;
-  hasUnreadMessages: boolean;
-}
 
 interface Props {
   navigation: any;
 }
 
 export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
-  const [isLoading, setIsLoading] = useState(true);
+  // Use centralized landlord context
+  const {
+    stats,
+    interestedTenants,
+    mutualMatches,
+    viewingRequests,
+    isLoadingStats,
+    refreshAll,
+  } = useLandlord();
+  
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalProperties: 0,
-    activeListings: 0,
-    pendingRequests: 0,
-    totalMatches: 0,
-    viewingsThisWeek: 0,
-    responseRate: 0,
-  });
-  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
 
-  const loadDashboardData = async (showRefresh = false) => {
-    if (showRefresh) setIsRefreshing(true);
-    
-    try {
-      const [statsRes, requestsRes, matchesRes] = await Promise.all([
-        apiClient.get('/api/landlord/stats'),
-        apiClient.get('/api/landlord/pending-requests'),
-        apiClient.get('/api/landlord/recent-matches'),
-      ]);
-
-      if (statsRes.data?.success && statsRes.data?.data) {
-        // Map API response to expected stats format
-        const apiStats = statsRes.data.data;
-        setStats({
-          totalProperties: (apiStats.activeListings || 0) + (apiStats.rentedProperties || 0),
-          activeListings: apiStats.activeListings || 0,
-          pendingRequests: apiStats.pendingViewings || 0,
-          totalMatches: apiStats.totalMatches || 0,
-          viewingsThisWeek: apiStats.confirmedViewings || 0,
-          responseRate: apiStats.responseRate || 0,
-        });
-      }
-      if (requestsRes.data?.success) setPendingRequests(requestsRes.data.data?.requests || []);
-      if (matchesRes.data?.success) setRecentMatches(matchesRes.data.data?.matches || []);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      // Use mock data for demo
-      setStats({
-        totalProperties: 3,
-        activeListings: 2,
-        pendingRequests: 5,
-        totalMatches: 12,
-        viewingsThisWeek: 3,
-        responseRate: 85,
-      });
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
+  // Load data on screen focus
   useFocusEffect(
     useCallback(() => {
-      loadDashboardData();
-    }, [])
+      console.log('[DashboardScreen] Screen focused - loading data via context');
+      refreshAll();
+    }, [refreshAll])
   );
 
-  const onRefresh = () => loadDashboardData(true);
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshAll();
+    setIsRefreshing(false);
+  };
 
-  if (isLoading) {
+  // Show loading only on initial load (no stats yet)
+  if (!stats && isLoadingStats) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6366f1" />
@@ -141,9 +114,9 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => Alert.alert('Coming Soon', 'Notifications feature is coming soon!')}
         >
           <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
-          {stats.pendingRequests > 0 && (
+          {(interestedTenants.length > 0 || viewingRequests.length > 0) && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{stats.pendingRequests}</Text>
+              <Text style={styles.badgeText}>{interestedTenants.length + viewingRequests.length}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -156,41 +129,57 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Stats Cards */}
+        {/* Stats Cards - Clickable */}
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: '#EEF2FF' }]}>
+          <TouchableOpacity 
+            style={[styles.statCard, { backgroundColor: '#EEF2FF' }]}
+            onPress={() => navigation.navigate('Properties', { filter: 'available' })}
+            activeOpacity={0.7}
+          >
             <Ionicons name="home-outline" size={24} color="#6366f1" />
-            <Text style={styles.statValue}>{stats.activeListings}</Text>
+            <Text style={styles.statValue}>{stats?.activeListings || 0}</Text>
             <Text style={styles.statLabel}>Active Listings</Text>
-          </View>
+          </TouchableOpacity>
           
-          <View style={[styles.statCard, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="time-outline" size={24} color="#D97706" />
-            <Text style={styles.statValue}>{stats.pendingRequests}</Text>
-            <Text style={styles.statLabel}>Pending Requests</Text>
-          </View>
+          <TouchableOpacity 
+            style={[styles.statCard, { backgroundColor: '#FEF3C7' }]}
+            onPress={() => navigation.navigate('LandlordMatches', { tab: 'interested' })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="people-outline" size={24} color="#D97706" />
+            <Text style={styles.statValue}>{interestedTenants.length}</Text>
+            <Text style={styles.statLabel}>Interested Tenants</Text>
+          </TouchableOpacity>
           
-          <View style={[styles.statCard, { backgroundColor: '#D1FAE5' }]}>
+          <TouchableOpacity 
+            style={[styles.statCard, { backgroundColor: '#D1FAE5' }]}
+            onPress={() => navigation.navigate('LandlordMatches', { tab: 'matches' })}
+            activeOpacity={0.7}
+          >
             <Ionicons name="heart-outline" size={24} color="#059669" />
-            <Text style={styles.statValue}>{stats.totalMatches}</Text>
-            <Text style={styles.statLabel}>Total Matches</Text>
-          </View>
+            <Text style={styles.statValue}>{mutualMatches.length}</Text>
+            <Text style={styles.statLabel}>Mutual Matches</Text>
+          </TouchableOpacity>
           
-          <View style={[styles.statCard, { backgroundColor: '#FCE7F3' }]}>
+          <TouchableOpacity 
+            style={[styles.statCard, { backgroundColor: '#FCE7F3' }]}
+            onPress={() => navigation.navigate('Viewings', { userRole: 'landlord' })}
+            activeOpacity={0.7}
+          >
             <Ionicons name="calendar-outline" size={24} color="#DB2777" />
-            <Text style={styles.statValue}>{stats.viewingsThisWeek}</Text>
-            <Text style={styles.statLabel}>Viewings This Week</Text>
-          </View>
+            <Text style={styles.statValue}>{viewingRequests.length}</Text>
+            <Text style={styles.statLabel}>Viewing Requests</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Response Rate */}
         <View style={styles.responseRateCard}>
           <View style={styles.responseRateHeader}>
             <Text style={styles.responseRateTitle}>Response Rate</Text>
-            <Text style={styles.responseRateValue}>{stats.responseRate}%</Text>
+            <Text style={styles.responseRateValue}>{stats?.responseRate || 0}%</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${stats.responseRate}%` }]} />
+            <View style={[styles.progressFill, { width: `${stats?.responseRate || 0}%` }]} />
           </View>
           <Text style={styles.responseRateHint}>
             Respond quickly to tenant inquiries to improve your visibility
@@ -213,7 +202,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('MyProperties')}
+              onPress={() => navigation.navigate('Properties', { filter: 'all' })}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#D1FAE5' }]}>
                 <Ionicons name="list-outline" size={24} color="#059669" />
@@ -223,7 +212,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('Viewings')}
+              onPress={() => navigation.navigate('Viewings', { userRole: 'landlord' })}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#FEF3C7' }]}>
                 <Ionicons name="calendar-outline" size={24} color="#D97706" />
@@ -233,82 +222,49 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Pending Requests */}
+        {/* Viewing Requests Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Pending Requests</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Requests')}>
-              <Text style={styles.seeAll}>See All</Text>
+            <Text style={styles.sectionTitle}>Viewing Requests</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Viewings', { userRole: 'landlord' })}>
+              <Text style={styles.seeAll}>See All ({viewingRequests.length})</Text>
             </TouchableOpacity>
           </View>
           
-          {pendingRequests.length === 0 ? (
+          {viewingRequests.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="checkmark-circle-outline" size={48} color="#ddd" />
-              <Text style={styles.emptyText}>No pending requests</Text>
-            </View>
-          ) : (
-            pendingRequests.slice(0, 3).map((request) => (
-              <TouchableOpacity
-                key={request.id}
-                style={styles.requestCard}
-                onPress={() => navigation.navigate('RequestDetail', { requestId: request.id })}
-              >
-                <View style={styles.requestInfo}>
-                  <Text style={styles.requestTenant}>{request.tenantName}</Text>
-                  <Text style={styles.requestProperty}>{request.propertyTitle}</Text>
-                  <Text style={styles.requestTime}>
-                    {new Date(request.requestedAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.requestBadge,
-                  request.type === 'viewing' ? styles.viewingBadge : styles.applicationBadge
-                ]}>
-                  <Text style={styles.requestBadgeText}>
-                    {request.type === 'viewing' ? 'Viewing' : 'Application'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        {/* Recent Matches */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Matches</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('LandlordMatches')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {recentMatches.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="heart-outline" size={48} color="#ddd" />
-              <Text style={styles.emptyText}>No matches yet</Text>
+              <Ionicons name="calendar-outline" size={48} color="#ddd" />
+              <Text style={styles.emptyText}>No viewing requests</Text>
               <Text style={styles.emptySubtext}>
-                Matches will appear here when tenants like your properties
+                Tenants will request viewings after matching with your properties
               </Text>
             </View>
           ) : (
-            recentMatches.slice(0, 3).map((match) => (
+            viewingRequests.slice(0, 3).map((viewing) => (
               <TouchableOpacity
-                key={match.id}
-                style={styles.matchCard}
-                onPress={() => navigation.navigate('Chat', { conversationId: match.id })}
+                key={viewing.id}
+                style={styles.viewingCard}
+                onPress={() => navigation.navigate('ViewingDetail', { viewingId: viewing.id })}
               >
-                <View style={styles.matchAvatar}>
-                  <Text style={styles.matchAvatarText}>
-                    {match.tenantName.charAt(0).toUpperCase()}
+                <View style={styles.viewingIconContainer}>
+                  <Ionicons name="calendar" size={24} color="#DB2777" />
+                </View>
+                <View style={styles.viewingInfo}>
+                  <Text style={styles.viewingTenant}>{viewing.tenant.name}</Text>
+                  <Text style={styles.viewingProperty}>
+                    {viewing.property.address || viewing.property.neighborhood}
+                  </Text>
+                  {viewing.date && (
+                    <Text style={styles.viewingDateTime}>
+                      {new Date(viewing.date).toLocaleDateString()}{viewing.time ? ` at ${viewing.time}` : ''}
+                    </Text>
+                  )}
+                </View>
+                <View style={[styles.viewingStatusBadge, getViewingStatusStyle(viewing.status)]}>
+                  <Text style={[styles.viewingStatusText, getViewingStatusTextStyle(viewing.status)]}>
+                    {formatViewingStatus(viewing.status)}
                   </Text>
                 </View>
-                <View style={styles.matchInfo}>
-                  <Text style={styles.matchTenant}>{match.tenantName}</Text>
-                  <Text style={styles.matchProperty}>{match.propertyTitle}</Text>
-                </View>
-                {match.hasUnreadMessages && <View style={styles.unreadDot} />}
-                <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
             ))
           )}
@@ -578,6 +534,51 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#6366f1',
     marginRight: 8,
+  },
+  // Viewing Request Styles
+  viewingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  viewingIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FCE7F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  viewingInfo: {
+    flex: 1,
+  },
+  viewingTenant: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  viewingProperty: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  viewingDateTime: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  viewingStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  viewingStatusText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

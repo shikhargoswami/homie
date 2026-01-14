@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { queryClient } from './src/config/queryClient';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/hooks/useAuth';
+import { ChatProvider } from './src/contexts/ChatContext';
 
 /**
  * Root App Component
@@ -25,8 +26,10 @@ export default function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <RootNavigator />
-            <StatusBar style="auto" />
+            <ChatProvider>
+              <RootNavigator />
+              <StatusBar style="auto" />
+            </ChatProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

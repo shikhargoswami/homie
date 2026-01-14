@@ -112,6 +112,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'car',
       occupationType: 'it_professional',
       gender: 'male',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/men/1.jpg',
+      age: 28,
+      workLocationName: 'Manyata Tech Park',
+      companyName: 'Infosys Ltd',
       preferences: {
         nonNegotiables: {
           gatedCommunity: true,
@@ -144,6 +149,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'wfh',
       occupationType: 'freelancer',
       gender: 'female',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/women/2.jpg',
+      age: 32,
+      workLocationName: 'Work from Home',
+      companyName: 'Freelance Consultant',
       preferences: {
         nonNegotiables: {
           gatedCommunity: true,
@@ -176,6 +186,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'walk_metro',
       occupationType: 'student',
       gender: 'male',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/men/3.jpg',
+      age: 23,
+      workLocationName: 'IISc Bangalore',
+      companyName: 'PhD Student',
       preferences: {
         nonNegotiables: {
           nearMetro: true,
@@ -205,6 +220,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'wfh',
       occupationType: 'freelancer',
       gender: 'male',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/men/4.jpg',
+      age: 35,
+      workLocationName: 'Work from Home',
+      companyName: 'Startup Founder',
       preferences: {
         nonNegotiables: {
           separateEntrance: true,
@@ -236,6 +256,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'bus',
       occupationType: 'it_professional',
       gender: 'female',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/women/5.jpg',
+      age: 26,
+      workLocationName: 'Electronic City',
+      companyName: 'Wipro Technologies',
       preferences: {
         nonNegotiables: {
           nearTechPark: true,
@@ -257,8 +282,9 @@ const seedTenantProfiles = async (client: PoolClient) => {
     await client.query(`
       INSERT INTO tenant_profiles (
         user_id, search_type, budget_min, budget_max, employment_status, preferences,
-        lifestyle_tags, work_location_lat, work_location_lng, max_commute_minutes, commute_mode, occupation_type, gender
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        lifestyle_tags, work_location_lat, work_location_lng, max_commute_minutes, commute_mode, occupation_type, gender,
+        photo, age, work_location_name, company_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       ON CONFLICT (user_id) DO UPDATE SET
         search_type = $2,
         budget_min = $3,
@@ -271,7 +297,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
         max_commute_minutes = $10,
         commute_mode = $11,
         occupation_type = $12,
-        gender = $13
+        gender = $13,
+        photo = $14,
+        age = $15,
+        work_location_name = $16,
+        company_name = $17
     `, [
       tenant.id, 
       pref.searchType, 
@@ -285,7 +315,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       pref.maxCommuteMinutes || 30,
       pref.commuteMode || 'any',
       pref.occupationType || 'other',
-      pref.gender || null
+      pref.gender || null,
+      pref.photo || null,
+      pref.age || null,
+      pref.workLocationName || null,
+      pref.companyName || null
     ]);
     i++;
   }
@@ -305,13 +339,18 @@ const seedTenantProfiles = async (client: PoolClient) => {
       employment: 'employed',
       lifestylePreferences: ['non_smoker', 'vegetarian', 'early_riser', 'work_from_home'],
       // Lifestyle matching data (tech-1.md)
-      lifestyleTags: ['cook_frequently', 'quiet_mornings', 'wfh_heavy'],
+      lifestyleTags: ['cook_frequently', 'quiet_mornings', 'wfh_heavy', 'non_smoker'],
       workLocationLat: null, // WFH
       workLocationLng: null,
       maxCommuteMinutes: 0,
       commuteMode: 'wfh',
       occupationType: 'it_professional',
       gender: 'male',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/men/6.jpg',
+      age: 25,
+      workLocationName: 'Work from Home',
+      companyName: 'TCS',
       roommatePreferences: {
         sleep_schedule: 'early_bird',
         cleanliness_level: 'high',
@@ -344,6 +383,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'walk_metro',
       occupationType: 'corporate',
       gender: 'female',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/women/7.jpg',
+      age: 27,
+      workLocationName: 'UB City',
+      companyName: 'Deloitte',
       roommatePreferences: {
         sleep_schedule: 'night_owl',
         cleanliness_level: 'medium',
@@ -376,6 +420,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'bus',
       occupationType: 'student',
       gender: 'male',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/men/8.jpg',
+      age: 22,
+      workLocationName: 'Christ University',
+      companyName: 'MBA Student',
       roommatePreferences: {
         sleep_schedule: 'flexible',
         cleanliness_level: 'medium',
@@ -408,6 +457,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       commuteMode: 'wfh',
       occupationType: 'it_professional',
       gender: 'male',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/men/9.jpg',
+      age: 29,
+      workLocationName: 'Work from Home',
+      companyName: 'Amazon',
       roommatePreferences: {
         sleep_schedule: 'early_bird',
         cleanliness_level: 'high',
@@ -433,13 +487,18 @@ const seedTenantProfiles = async (client: PoolClient) => {
       employment: 'employed',
       lifestylePreferences: ['vegetarian', 'early_riser', 'quiet'],
       // Lifestyle matching data (tech-1.md)
-      lifestyleTags: ['cook_frequently', 'quiet_mornings', 'gym_nearby'],
+      lifestyleTags: ['cook_frequently', 'quiet_mornings', 'gym_nearby', 'non_smoker'],
       workLocationLat: 12.8456,
       workLocationLng: 77.6603,
       maxCommuteMinutes: 25,
       commuteMode: 'bike',
       occupationType: 'it_professional',
       gender: 'female',
+      // Landlord swipe feed data
+      photo: 'https://randomuser.me/api/portraits/women/10.jpg',
+      age: 24,
+      workLocationName: 'Infosys Campus',
+      companyName: 'Infosys',
       roommatePreferences: {
         sleep_schedule: 'early_bird',
         cleanliness_level: 'high',
@@ -464,8 +523,9 @@ const seedTenantProfiles = async (client: PoolClient) => {
     await client.query(`
       INSERT INTO tenant_profiles (
         user_id, search_type, budget_min, budget_max, employment_status, preferences,
-        lifestyle_tags, roommate_preferences, work_location_lat, work_location_lng, max_commute_minutes, commute_mode, occupation_type, gender
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        lifestyle_tags, roommate_preferences, work_location_lat, work_location_lng, max_commute_minutes, commute_mode, occupation_type, gender,
+        photo, age, work_location_name, company_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       ON CONFLICT (user_id) DO UPDATE SET
         search_type = $2,
         budget_min = $3,
@@ -479,7 +539,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
         max_commute_minutes = $11,
         commute_mode = $12,
         occupation_type = $13,
-        gender = $14
+        gender = $14,
+        photo = $15,
+        age = $16,
+        work_location_name = $17,
+        company_name = $18
     `, [
       tenant.id, 
       pref.searchType, 
@@ -499,7 +563,11 @@ const seedTenantProfiles = async (client: PoolClient) => {
       pref.maxCommuteMinutes || 30,
       pref.commuteMode || 'any',
       pref.occupationType || 'other',
-      pref.gender || null
+      pref.gender || null,
+      pref.photo || null,
+      pref.age || null,
+      pref.workLocationName || null,
+      pref.companyName || null
     ]);
     i++;
   }
@@ -1162,6 +1230,685 @@ const seedMatches = async (client: PoolClient) => {
   }
 
   console.log('✅ Matches seeded (likes, passes, and mutual matches for test user 9876540001)');
+  
+  // Now seed interested tenants specifically for landlord 9123450001
+  await seedLandlordSwipeFeed(client);
+};
+
+/**
+ * Seed interested tenants for landlord swipe feed (landlord 9123450001)
+ * Creates rich tenant profiles that have swiped right on landlord's properties
+ */
+const seedLandlordSwipeFeed = async (client: PoolClient) => {
+  console.log('📝 Seeding landlord swipe feed data...');
+  
+  // Get landlord 9123450001
+  const landlordResult = await client.query(`
+    SELECT id FROM users WHERE phone = '9123450001' LIMIT 1
+  `);
+  
+  if (landlordResult.rows.length === 0) {
+    console.log('⚠️ Landlord 9123450001 not found, skipping swipe feed seed');
+    return;
+  }
+  
+  const landlordId = landlordResult.rows[0].id;
+  
+  // Get landlord's properties
+  const propertiesResult = await client.query(`
+    SELECT id, address, neighborhood, rent FROM properties WHERE landlord_id = $1
+  `, [landlordId]);
+  
+  if (propertiesResult.rows.length === 0) {
+    console.log('⚠️ No properties found for landlord 9123450001');
+    return;
+  }
+  
+  console.log(`  Found ${propertiesResult.rows.length} properties for landlord 9123450001`);
+  
+  // Create interested tenants with rich profile data
+  const interestedTenants = [
+    {
+      phone: '9876541001',
+      email: 'aditi.kumar@homie.test',
+      name: 'Aditi & Rohan Kumar',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 35000,
+        budgetMax: 40000,
+        employment: 'employed',
+        lifestyleTags: ['quiet_mornings', 'cook_frequently', 'non_smoker', 'gym_nearby'],
+        workLocationLat: 12.9698,
+        workLocationLng: 77.7500,
+        maxCommuteMinutes: 45,
+        commuteMode: 'car',
+        occupationType: 'it_professional',
+        gender: 'female',
+        photo: 'https://randomuser.me/api/portraits/women/32.jpg',
+        age: 29,
+        workLocationName: 'Whitefield Tech Park',
+        companyName: 'TCS',
+        // Enhanced fields
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 1800000, // 18L/year
+        preferredMoveIn: '2026-03-01',
+        preferredLeaseMonths: 24,
+        isCouple: true,
+        partnerName: 'Rohan Kumar',
+        familySize: 2,
+        hasChildren: false,
+        currentLocation: 'Whitefield',
+        interestMessage: 'Love the locality, need more space for our baby. Prefer gated community with security.',
+        lookingForDescription: 'Family-friendly 3BHK, long-term rental',
+      },
+      rentalHistory: {
+        landlordName: 'Mr. Sharma',
+        duration: '2 years',
+        rating: 5.0,
+        review: 'Excellent tenants - clean, timely rent, no issues. Highly recommend!',
+      },
+      matchScore: 90,
+      matchReason: '90% Match for your property',
+      matchHighlights: ['Verified tenants', 'Long-term rental', 'High income'],
+    },
+    {
+      phone: '9876541002',
+      email: 'prateek.sharma@homie.test',
+      name: 'Prateek Sharma',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 28000,
+        budgetMax: 35000,
+        employment: 'employed',
+        lifestyleTags: ['wfh_heavy', 'quiet_mornings', 'non_smoker', 'cook_frequently'],
+        workLocationLat: null,
+        workLocationLng: null,
+        maxCommuteMinutes: 0,
+        commuteMode: 'wfh',
+        occupationType: 'it_professional',
+        gender: 'male',
+        photo: 'https://randomuser.me/api/portraits/men/45.jpg',
+        age: 27,
+        workLocationName: 'Work from Home',
+        companyName: 'Google India',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 2400000, // 24L/year
+        preferredMoveIn: '2026-02-15',
+        preferredLeaseMonths: 12,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'Indiranagar',
+        interestMessage: 'Looking for a quiet space with good internet for WFH. Love the natural light.',
+        lookingForDescription: 'Quiet 2BHK with home office space',
+      },
+      rentalHistory: {
+        landlordName: 'Mrs. Reddy',
+        duration: '18 months',
+        rating: 4.8,
+        review: 'Very responsible tenant. Always paid on time. Would happily rent again.',
+      },
+      matchScore: 88,
+      matchReason: '88% Match - Works from home, quiet tenant',
+      matchHighlights: ['Works from home', 'High income', 'Non-smoker'],
+    },
+    {
+      phone: '9876541003',
+      email: 'meera.nair@homie.test',
+      name: 'Meera Nair',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 30000,
+        budgetMax: 38000,
+        employment: 'employed',
+        lifestyleTags: ['pet_owner_dog', 'gym_nearby', 'sunlight_lover', 'cook_frequently'],
+        workLocationLat: 12.9716,
+        workLocationLng: 77.5946,
+        maxCommuteMinutes: 30,
+        commuteMode: 'bike',
+        occupationType: 'corporate',
+        gender: 'female',
+        photo: 'https://randomuser.me/api/portraits/women/28.jpg',
+        age: 31,
+        workLocationName: 'MG Road',
+        companyName: 'Deloitte',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: false,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 1500000,
+        preferredMoveIn: '2026-02-28',
+        preferredLeaseMonths: 12,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'HSR Layout',
+        interestMessage: 'Have a well-trained golden retriever. Looking for pet-friendly home with balcony.',
+        lookingForDescription: 'Pet-friendly 2BHK with balcony',
+      },
+      rentalHistory: {
+        landlordName: 'Mr. Iyer',
+        duration: '1 year',
+        rating: 4.5,
+        review: 'Good tenant with a well-behaved dog. Kept the place clean.',
+      },
+      matchScore: 82,
+      matchReason: '82% Match - Pet owner, works nearby',
+      matchHighlights: ['Pet owner', 'Works nearby', 'Previous good reviews'],
+    },
+    {
+      phone: '9876541004',
+      email: 'arjun.venkat@homie.test',
+      name: 'Arjun Venkatesh',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 25000,
+        budgetMax: 32000,
+        employment: 'employed',
+        lifestyleTags: ['gym_nearby', 'nightlife', 'non_smoker'],
+        workLocationLat: 12.9352,
+        workLocationLng: 77.6245,
+        maxCommuteMinutes: 20,
+        commuteMode: 'walk_metro',
+        occupationType: 'startup',
+        gender: 'male',
+        photo: 'https://randomuser.me/api/portraits/men/52.jpg',
+        age: 26,
+        workLocationName: 'Koramangala',
+        companyName: 'Swiggy',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: false,
+        previousLandlordVerified: false,
+        annualIncome: 1200000,
+        preferredMoveIn: '2026-03-15',
+        preferredLeaseMonths: 11,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'BTM Layout',
+        interestMessage: 'Work at Swiggy in Koramangala. Looking for a place within walking distance to office.',
+        lookingForDescription: 'Modern 2BHK near Koramangala',
+      },
+      rentalHistory: null,
+      matchScore: 78,
+      matchReason: '78% Match - Works in Koramangala, short commute',
+      matchHighlights: ['Works nearby', 'Young professional', 'Non-smoker'],
+    },
+    {
+      phone: '9876541005',
+      email: 'deepa.raj@homie.test',
+      name: 'Deepa & Karthik Raj',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 40000,
+        budgetMax: 55000,
+        employment: 'employed',
+        lifestyleTags: ['quiet_mornings', 'sunlight_lover', 'cook_frequently', 'non_smoker'],
+        workLocationLat: 12.9716,
+        workLocationLng: 77.6412,
+        maxCommuteMinutes: 35,
+        commuteMode: 'car',
+        occupationType: 'healthcare',
+        gender: 'female',
+        photo: 'https://randomuser.me/api/portraits/women/44.jpg',
+        age: 34,
+        workLocationName: 'Manipal Hospital',
+        companyName: 'Manipal Hospitals',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 3000000, // 30L/year combined
+        preferredMoveIn: '2026-04-01',
+        preferredLeaseMonths: 36,
+        isCouple: true,
+        partnerName: 'Dr. Karthik Raj',
+        familySize: 2,
+        hasChildren: false,
+        currentLocation: 'JP Nagar',
+        interestMessage: 'Both doctors at Manipal. Looking for a peaceful home for long-term stay. We work rotating shifts.',
+        lookingForDescription: '3BHK with parking, long-term',
+      },
+      rentalHistory: {
+        landlordName: 'Mrs. Murthy',
+        duration: '3 years',
+        rating: 5.0,
+        review: 'Best tenants I\'ve ever had. Professional, respectful, always on time with rent. Maintained the property exceptionally well.',
+      },
+      matchScore: 95,
+      matchReason: '95% Match - Verified professionals, long-term',
+      matchHighlights: ['Doctors', 'Very high income', 'Long-term commitment', '5-star reviews'],
+    },
+    {
+      phone: '9876541006',
+      email: 'vishal.mehta@homie.test',
+      name: 'Vishal Mehta',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 20000,
+        budgetMax: 28000,
+        employment: 'employed',
+        lifestyleTags: ['gym_nearby', 'cook_frequently', 'non_smoker', 'quiet_mornings'],
+        workLocationLat: 12.8456,
+        workLocationLng: 77.6603,
+        maxCommuteMinutes: 40,
+        commuteMode: 'bus',
+        occupationType: 'it_professional',
+        gender: 'male',
+        photo: 'https://randomuser.me/api/portraits/men/33.jpg',
+        age: 25,
+        workLocationName: 'Electronic City',
+        companyName: 'Infosys',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: false,
+        annualIncome: 800000,
+        preferredMoveIn: '2026-02-01',
+        preferredLeaseMonths: 12,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'Marathahalli',
+        interestMessage: 'Fresh graduate, first job. Looking for affordable, clean 1BHK. Can provide employment letter.',
+        lookingForDescription: 'Budget-friendly 1BHK near Electronic City',
+      },
+      rentalHistory: null,
+      matchScore: 72,
+      matchReason: '72% Match - Budget fits, employed fresher',
+      matchHighlights: ['Employed', 'Non-smoker', 'First-time renter'],
+    },
+    {
+      phone: '9876541007',
+      email: 'sneha.iyer@homie.test',
+      name: 'Sneha Iyer',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 30000,
+        budgetMax: 40000,
+        employment: 'self_employed',
+        lifestyleTags: ['wfh_heavy', 'sunlight_lover', 'pet_owner_cat', 'cook_frequently'],
+        workLocationLat: null,
+        workLocationLng: null,
+        maxCommuteMinutes: 0,
+        commuteMode: 'wfh',
+        occupationType: 'freelancer',
+        gender: 'female',
+        photo: 'https://randomuser.me/api/portraits/women/55.jpg',
+        age: 30,
+        workLocationName: 'Work from Home',
+        companyName: 'Freelance UI/UX Designer',
+        isVerified: true,
+        employmentVerified: false,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 1600000,
+        preferredMoveIn: '2026-03-01',
+        preferredLeaseMonths: 18,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'Koramangala',
+        interestMessage: 'UI/UX freelancer. Need bright space with room for home studio. Have a quiet indoor cat.',
+        lookingForDescription: 'Bright 2BHK with home office space',
+      },
+      rentalHistory: {
+        landlordName: 'Mr. Kumar',
+        duration: '2 years',
+        rating: 4.7,
+        review: 'Creative tenant, well-maintained the flat. Cat was no trouble. Reliable rent payments.',
+      },
+      matchScore: 85,
+      matchReason: '85% Match - WFH, cat owner, creative professional',
+      matchHighlights: ['Works from home', 'Cat owner', 'Creative professional'],
+    },
+    {
+      phone: '9876541008',
+      email: 'rahul.jain@homie.test',
+      name: 'Rahul Jain',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 32000,
+        budgetMax: 45000,
+        employment: 'employed',
+        lifestyleTags: ['gym_nearby', 'non_smoker', 'cook_frequently', 'sunlight_lover'],
+        workLocationLat: 12.9716,
+        workLocationLng: 77.5946,
+        maxCommuteMinutes: 30,
+        commuteMode: 'car',
+        occupationType: 'corporate',
+        gender: 'male',
+        photo: 'https://randomuser.me/api/portraits/men/62.jpg',
+        age: 33,
+        workLocationName: 'Manyata Tech Park',
+        companyName: 'Amazon',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 2800000,
+        preferredMoveIn: '2026-02-15',
+        preferredLeaseMonths: 24,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'Hebbal',
+        interestMessage: 'Senior engineer at Amazon. Looking for spacious apartment in good locality. Prefer modern amenities.',
+        lookingForDescription: 'Modern 2-3BHK with gym access',
+      },
+      rentalHistory: {
+        landlordName: 'Mrs. Desai',
+        duration: '2.5 years',
+        rating: 4.9,
+        review: 'Rahul was an ideal tenant. Very professional, property was always spotless. Zero issues.',
+      },
+      matchScore: 92,
+      matchReason: '92% Match - High income, excellent reviews',
+      matchHighlights: ['Amazon employee', 'High income', 'Excellent reviews', 'Long-term'],
+    },
+    {
+      phone: '9876541009',
+      email: 'ananya.das@homie.test',
+      name: 'Ananya Das',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 18000,
+        budgetMax: 25000,
+        employment: 'employed',
+        lifestyleTags: ['gym_nearby', 'nightlife', 'cook_frequently'],
+        workLocationLat: 12.9341,
+        workLocationLng: 77.6229,
+        maxCommuteMinutes: 25,
+        commuteMode: 'walk_metro',
+        occupationType: 'corporate',
+        gender: 'female',
+        photo: 'https://randomuser.me/api/portraits/women/17.jpg',
+        age: 24,
+        workLocationName: 'Forum Mall Koramangala',
+        companyName: 'H&M Retail',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: false,
+        policeVerification: true,
+        previousLandlordVerified: false,
+        annualIncome: 600000,
+        preferredMoveIn: '2026-02-01',
+        preferredLeaseMonths: 11,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'JP Nagar',
+        interestMessage: 'Work at H&M in Forum Mall. Looking for affordable place near work. Flexible with sharing.',
+        lookingForDescription: 'Budget 1BHK near Koramangala',
+      },
+      rentalHistory: null,
+      matchScore: 70,
+      matchReason: '70% Match - Works nearby, budget-conscious',
+      matchHighlights: ['Works nearby', 'Young professional'],
+    },
+    {
+      phone: '9876541010',
+      email: 'suresh.patil@homie.test',
+      name: 'Suresh & Lakshmi Patil',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 35000,
+        budgetMax: 50000,
+        employment: 'employed',
+        lifestyleTags: ['quiet_mornings', 'cook_frequently', 'non_smoker', 'sunlight_lover'],
+        workLocationLat: 12.9716,
+        workLocationLng: 77.6412,
+        maxCommuteMinutes: 40,
+        commuteMode: 'car',
+        occupationType: 'corporate',
+        gender: 'male',
+        photo: 'https://randomuser.me/api/portraits/men/71.jpg',
+        age: 42,
+        workLocationName: 'Vidhana Soudha',
+        companyName: 'Karnataka Government',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 1400000,
+        preferredMoveIn: '2026-03-01',
+        preferredLeaseMonths: 36,
+        isCouple: true,
+        partnerName: 'Lakshmi Patil',
+        familySize: 4,
+        hasChildren: true,
+        currentLocation: 'Rajajinagar',
+        interestMessage: 'Government officer. Relocating to South Bangalore for kids\' school. Need family-friendly 3BHK.',
+        lookingForDescription: 'Family 3BHK near good schools',
+      },
+      rentalHistory: {
+        landlordName: 'Mr. Rao',
+        duration: '5 years',
+        rating: 5.0,
+        review: 'Model family. Lived here 5 years without a single complaint. Treated property like their own.',
+      },
+      matchScore: 87,
+      matchReason: '87% Match - Stable family, government job',
+      matchHighlights: ['Government job', 'Family with kids', 'Long-term commitment', '5-star rating'],
+    },
+    {
+      phone: '9876541011',
+      email: 'kavitha.rani@homie.test',
+      name: 'Kavitha Rani',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 22000,
+        budgetMax: 30000,
+        employment: 'employed',
+        lifestyleTags: ['quiet_mornings', 'sunlight_lover', 'cook_frequently', 'non_smoker'],
+        workLocationLat: 12.9063,
+        workLocationLng: 77.5857,
+        maxCommuteMinutes: 35,
+        commuteMode: 'bus',
+        occupationType: 'other',
+        gender: 'female',
+        photo: 'https://randomuser.me/api/portraits/women/65.jpg',
+        age: 38,
+        workLocationName: 'National Public School',
+        companyName: 'NPS Koramangala',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 900000,
+        preferredMoveIn: '2026-04-01',
+        preferredLeaseMonths: 24,
+        isCouple: false,
+        familySize: 2,
+        hasChildren: true,
+        currentLocation: 'Jayanagar',
+        interestMessage: 'School teacher. Single mother with a 10-year-old daughter. Need safe, quiet neighborhood.',
+        lookingForDescription: 'Safe 2BHK near school',
+      },
+      rentalHistory: {
+        landlordName: 'Mrs. Hegde',
+        duration: '3 years',
+        rating: 4.9,
+        review: 'Wonderful tenant. Her daughter is well-behaved. Property always clean. Highly trustworthy.',
+      },
+      matchScore: 84,
+      matchReason: '84% Match - Teacher, single parent, stable',
+      matchHighlights: ['Teacher', 'Long-term', 'Excellent reviews', 'Quiet tenant'],
+    },
+    {
+      phone: '9876541012',
+      email: 'nikhil.gupta@homie.test',
+      name: 'Nikhil Gupta',
+      profile: {
+        searchType: 'full_home',
+        budgetMin: 28000,
+        budgetMax: 35000,
+        employment: 'employed',
+        lifestyleTags: ['gym_nearby', 'non_smoker', 'sunlight_lover', 'cook_frequently'],
+        workLocationLat: 12.9352,
+        workLocationLng: 77.6245,
+        maxCommuteMinutes: 20,
+        commuteMode: 'bike',
+        occupationType: 'startup',
+        gender: 'male',
+        photo: 'https://randomuser.me/api/portraits/men/25.jpg',
+        age: 28,
+        workLocationName: 'WeWork Koramangala',
+        companyName: 'Razorpay',
+        isVerified: true,
+        employmentVerified: true,
+        incomeVerified: true,
+        policeVerification: true,
+        previousLandlordVerified: true,
+        annualIncome: 2000000,
+        preferredMoveIn: '2026-02-28',
+        preferredLeaseMonths: 12,
+        isCouple: false,
+        familySize: 1,
+        hasChildren: false,
+        currentLocation: 'HSR Layout',
+        interestMessage: 'Work at Razorpay. Love Koramangala for the vibe. Looking for modern apartment near work.',
+        lookingForDescription: 'Modern 2BHK near Koramangala',
+      },
+      rentalHistory: {
+        landlordName: 'Mr. Srinivas',
+        duration: '1.5 years',
+        rating: 4.6,
+        review: 'Good tenant. Young professional. No issues with rent or maintenance.',
+      },
+      matchScore: 86,
+      matchReason: '86% Match - Tech professional, works in Koramangala',
+      matchHighlights: ['Razorpay employee', 'Works nearby', 'Good income'],
+    },
+  ];
+  
+  // First, create the users and profiles
+  for (const tenant of interestedTenants) {
+    // Create user
+    await client.query(`
+      INSERT INTO users (phone, email, name, role, profile_completed)
+      VALUES ($1, $2, $3, 'tenant', true)
+      ON CONFLICT (phone) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        role = EXCLUDED.role,
+        profile_completed = EXCLUDED.profile_completed
+    `, [tenant.phone, tenant.email, tenant.name]);
+    
+    // Get user id
+    const userResult = await client.query(`SELECT id FROM users WHERE phone = $1`, [tenant.phone]);
+    const userId = userResult.rows[0].id;
+    
+    // Create tenant profile with enhanced data
+    const p = tenant.profile;
+    await client.query(`
+      INSERT INTO tenant_profiles (
+        user_id, search_type, budget_min, budget_max, employment_status,
+        lifestyle_tags, work_location_lat, work_location_lng, max_commute_minutes, commute_mode,
+        occupation_type, gender, photo, age, work_location_name, company_name,
+        is_verified, employment_verified, income_verified, police_verification, previous_landlord_verified,
+        annual_income, preferred_move_in, preferred_lease_months,
+        is_couple, partner_name, family_size, has_children, current_location, interest_message
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16,
+        $17, $18, $19, $20, $21,
+        $22, $23, $24,
+        $25, $26, $27, $28, $29, $30
+      )
+      ON CONFLICT (user_id) DO UPDATE SET
+        search_type = $2, budget_min = $3, budget_max = $4, employment_status = $5,
+        lifestyle_tags = $6, work_location_lat = $7, work_location_lng = $8,
+        max_commute_minutes = $9, commute_mode = $10, occupation_type = $11, gender = $12,
+        photo = $13, age = $14, work_location_name = $15, company_name = $16,
+        is_verified = $17, employment_verified = $18, income_verified = $19,
+        police_verification = $20, previous_landlord_verified = $21,
+        annual_income = $22, preferred_move_in = $23, preferred_lease_months = $24,
+        is_couple = $25, partner_name = $26, family_size = $27, has_children = $28,
+        current_location = $29, interest_message = $30
+    `, [
+      userId, p.searchType, p.budgetMin, p.budgetMax, p.employment,
+      JSON.stringify(p.lifestyleTags), p.workLocationLat, p.workLocationLng, p.maxCommuteMinutes, p.commuteMode,
+      p.occupationType, p.gender, p.photo, p.age, p.workLocationName, p.companyName,
+      p.isVerified || false, p.employmentVerified || false, p.incomeVerified || false,
+      p.policeVerification || false, p.previousLandlordVerified || false,
+      p.annualIncome || null, p.preferredMoveIn || null, p.preferredLeaseMonths || 12,
+      p.isCouple || false, p.partnerName || null, p.familySize || 1, p.hasChildren || false,
+      p.currentLocation || null, p.interestMessage || null
+    ]);
+    
+    // Create rental history if exists
+    if (tenant.rentalHistory) {
+      await client.query(`
+        INSERT INTO tenant_rental_history (tenant_id, landlord_name, duration_months, rating, review_text, is_verified)
+        VALUES ($1, $2, $3, $4, $5, true)
+        ON CONFLICT DO NOTHING
+      `, [
+        userId,
+        tenant.rentalHistory.landlordName,
+        parseInt(tenant.rentalHistory.duration) * 12 || 12,
+        tenant.rentalHistory.rating,
+        tenant.rentalHistory.review
+      ]);
+    }
+    
+    // Create matches - tenant swiped right on landlord's properties (but landlord hasn't swiped yet)
+    // Only create match for the first full_home property (to avoid duplicates in the feed)
+    const fullHomeProperty = propertiesResult.rows.find(p => p.rent > 20000); // Full home properties have higher rent
+    if (fullHomeProperty) {
+      await client.query(`
+        INSERT INTO matches (
+          tenant_id, property_id, status, match_score, 
+          tenant_swiped, tenant_swipe_direction, tenant_swiped_at,
+          landlord_swiped, landlord_swipe_direction,
+          match_reason, match_highlights, tenant_interest_message, tenant_move_in_date, tenant_lease_preference
+        )
+        VALUES ($1, $2, 'interested', $3, true, 'right', NOW(), false, NULL, $4, $5, $6, $7, $8)
+        ON CONFLICT (tenant_id, property_id) DO UPDATE SET
+          status = 'interested',
+          match_score = $3,
+          tenant_swiped = true,
+          tenant_swipe_direction = 'right',
+          tenant_swiped_at = NOW(),
+          landlord_swiped = false,
+          landlord_swipe_direction = NULL,
+          match_reason = $4,
+          match_highlights = $5,
+          tenant_interest_message = $6,
+          tenant_move_in_date = $7,
+          tenant_lease_preference = $8
+      `, [
+        userId,
+        fullHomeProperty.id,
+        tenant.matchScore,
+        tenant.matchReason,
+        JSON.stringify(tenant.matchHighlights),
+        p.interestMessage,
+        p.preferredMoveIn,
+        p.preferredLeaseMonths
+      ]);
+    }
+  }
+  
+  console.log(`✅ Landlord swipe feed seeded: ${interestedTenants.length} interested tenants for landlord 9123450001`);
 };
 
 /**
@@ -1240,6 +1987,7 @@ export const seedDatabase = async (): Promise<void> => {
       await seedViewings(client);
       await seedReviews(client);
       await seedQuickReplies(client);
+      await seedLandlordSwipeFeed(client);  // Landlord swipe feed (interested tenants)
     });
     
     console.log('');

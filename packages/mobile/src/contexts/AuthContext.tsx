@@ -7,7 +7,7 @@ import type { User, AuthResponse, OTPResponse } from '../services/auth.service';
 // 🔧 DEV FLAG: Set to true to always start from login screen
 const DEV_FORCE_LOGOUT = true;
 // 🔧 DEV FLAG: Set to true to reset test user (9999999999) data on app start
-const DEV_RESET_TEST_USER = true;
+const DEV_RESET_TEST_USER = false; // Disabled to preserve test data
 
 interface AuthContextType {
   user: User | null;

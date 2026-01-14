@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useChat, Conversation } from '../../hooks/useChat';
 
@@ -21,22 +21,28 @@ export default function ChatListScreen() {
     fetchConversations,
     unreadCount,
     fetchUnreadCount,
+    isLoading: contextLoading,
   } = useChat();
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const isLoading = initialLoading && contextLoading;
 
   console.log('[ChatListScreen] Render - conversations:', conversations?.length || 0, 'isLoading:', isLoading);
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
+  // Load conversations when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[ChatListScreen] Screen focused - loading conversations');
+      loadConversations();
+    }, [])
+  );
 
   const loadConversations = async () => {
     console.log('[ChatListScreen] loadConversations starting...');
-    setIsLoading(true);
     await fetchConversations();
     await fetchUnreadCount();
-    setIsLoading(false);
+    setInitialLoading(false);
     console.log('[ChatListScreen] loadConversations done');
   };
 

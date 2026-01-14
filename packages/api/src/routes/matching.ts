@@ -4,6 +4,8 @@ import {
   recordSwipe,
   getMutualMatches,
   getMatchStats,
+  respondToMatch,
+  getInterestedTenants,
 } from '../controllers/matching.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '@homie/shared';
@@ -45,6 +47,22 @@ router.get(
   '/stats',
   authenticate,
   getMatchStats
+);
+
+// Landlord: Get interested tenants (tenants who swiped right but need response)
+router.get(
+  '/interested-tenants',
+  authenticate,
+  authorize([UserRole.LANDLORD]),
+  getInterestedTenants
+);
+
+// Landlord: Respond to tenant interest (accept/reject)
+router.post(
+  '/:matchId/respond',
+  authenticate,
+  authorize([UserRole.LANDLORD]),
+  respondToMatch
 );
 
 export default router;

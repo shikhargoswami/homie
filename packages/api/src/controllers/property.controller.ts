@@ -420,6 +420,8 @@ export const updatePropertyStatus = async (
 /**
  * Get landlord's properties
  * GET /api/landlord/properties
+ * Query params:
+ *   - status: 'available' | 'rented' | 'all' (optional, defaults to 'all')
  */
 export const getLandlordProperties = async (
   req: Request,
@@ -428,6 +430,7 @@ export const getLandlordProperties = async (
 ): Promise<void> => {
   try {
     const landlordId = req.userId;
+    const statusFilter = req.query.status as string | undefined;
 
     if (!landlordId) {
       res.status(401).json({
@@ -435,6 +438,15 @@ export const getLandlordProperties = async (
         error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
       });
       return;
+    }
+
+    // Build the query based on status filter
+    let statusCondition = '';
+    const queryParams: any[] = [landlordId];
+    
+    if (statusFilter && statusFilter !== 'all') {
+      statusCondition = 'AND p.status = $2';
+      queryParams.push(statusFilter);
     }
 
     const result = await query(
@@ -445,10 +457,10 @@ export const getLandlordProperties = async (
        FROM properties p
        LEFT JOIN matches m ON p.id = m.property_id
        LEFT JOIN viewings v ON p.id = v.property_id
-       WHERE p.landlord_id = $1
+       WHERE p.landlord_id = $1 ${statusCondition}
        GROUP BY p.id
        ORDER BY p.created_at DESC`,
-      [landlordId]
+      queryParams
     );
 
     res.status(200).json({
@@ -498,12 +510,15 @@ export const getLandlordStats = async (
       [landlordId]
     );
 
-    // Get match counts (using matches table with tenant_swipe_direction)
+    // Get match counts - differentiate between mutual matches and interested tenants
     const matchCounts = await query(
-      `SELECT COUNT(DISTINCT m.tenant_id) as total_matches
+      `SELECT 
+        COUNT(*) FILTER (WHERE m.status = 'active' AND m.landlord_swiped = true) as mutual_matches,
+        COUNT(*) FILTER (WHERE m.tenant_swipe_direction = 'right' AND (m.landlord_swiped = false OR m.landlord_swiped IS NULL)) as interested_tenants,
+        COUNT(*) FILTER (WHERE m.tenant_swipe_direction = 'right') as total_tenant_likes
        FROM matches m
        JOIN properties p ON m.property_id = p.id
-       WHERE p.landlord_id = $1 AND m.tenant_swipe_direction = 'right'`,
+       WHERE p.landlord_id = $1`,
       [landlordId]
     );
 
@@ -530,7 +545,12 @@ export const getLandlordStats = async (
       data: {
         activeListings: parseInt(propertyCounts.rows[0]?.active_listings) || 0,
         rentedProperties: parseInt(propertyCounts.rows[0]?.rented) || 0,
-        totalMatches: parseInt(matchCounts.rows[0]?.total_matches) || 0,
+        // Mutual matches - both tenant and landlord swiped right (active status)
+        totalMatches: parseInt(matchCounts.rows[0]?.mutual_matches) || 0,
+        // Interested tenants - tenants who liked but landlord hasn't responded
+        interestedTenants: parseInt(matchCounts.rows[0]?.interested_tenants) || 0,
+        // Total likes - all tenant right swipes (for analytics)
+        totalTenantLikes: parseInt(matchCounts.rows[0]?.total_tenant_likes) || 0,
         pendingViewings: parseInt(viewingCounts.rows[0]?.pending) || 0,
         confirmedViewings: parseInt(viewingCounts.rows[0]?.confirmed) || 0,
         responseRate: parseFloat(profileResult.rows[0]?.rating) * 20 || 0, // Convert 0-5 rating to percentage
@@ -636,18 +656,24 @@ export const getRecentMatches = async (
         m.id,
         m.created_at as matched_at,
         m.match_score,
+        m.status as match_status,
+        m.landlord_swiped,
+        m.landlord_swipe_direction,
         p.id as property_id,
         p.address as property_address,
         p.neighborhood as property_neighborhood,
         u.id as tenant_id,
         u.name as tenant_name,
+        u.phone as tenant_phone,
         tp.employment_status as tenant_occupation
        FROM matches m
        JOIN properties p ON m.property_id = p.id
        JOIN users u ON m.tenant_id = u.id
        LEFT JOIN tenant_profiles tp ON u.id = tp.user_id
        WHERE p.landlord_id = $1 AND m.tenant_swipe_direction = 'right'
-       ORDER BY m.created_at DESC
+       ORDER BY 
+         CASE WHEN m.landlord_swiped = false OR m.landlord_swiped IS NULL THEN 0 ELSE 1 END,
+         m.created_at DESC
        LIMIT 10`,
       [landlordId]
     );
@@ -659,6 +685,10 @@ export const getRecentMatches = async (
           id: row.id,
           matchedAt: row.matched_at,
           matchScore: row.match_score,
+          status: row.match_status,
+          // Shows if landlord needs to respond
+          needsResponse: !row.landlord_swiped,
+          landlordResponse: row.landlord_swiped ? row.landlord_swipe_direction : null,
           property: {
             id: row.property_id,
             address: row.property_address,
@@ -667,6 +697,7 @@ export const getRecentMatches = async (
           tenant: {
             id: row.tenant_id,
             name: row.tenant_name,
+            phone: row.tenant_phone,
             photo: null,
             occupation: row.tenant_occupation,
           },

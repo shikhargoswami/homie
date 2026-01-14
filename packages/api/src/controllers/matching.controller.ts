@@ -256,18 +256,33 @@ export const recordSwipe = async (
       if (matchResult.rowCount && matchResult.rowCount > 0) {
         const match = matchResult.rows[0];
         
-        // Check if landlord also swiped right (we'll implement landlord swipe later)
-        // For now, just mark as interested
-        isMutualMatch = match.landlord_swiped && match.landlord_swipe_direction === 'right';
-        
-        if (isMutualMatch) {
-          // Update match status
+        // MVP: Auto-approve landlord side when tenant swipes right
+        // This simulates landlord acceptance - in production, landlords would 
+        // review and accept/reject tenant applications
+        if (!match.landlord_swiped) {
           await query(
-            `UPDATE matches SET status = 'active' WHERE id = $1`,
+            `UPDATE matches 
+             SET landlord_swiped = true, 
+                 landlord_swipe_direction = 'right',
+                 landlord_swiped_at = CURRENT_TIMESTAMP,
+                 status = 'active',
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
             [match.id]
           );
+          isMutualMatch = true;
+          console.log(`🎉 Auto-approved mutual match! Tenant ${tenantId} and Property ${propertyId}`);
+        } else if (match.landlord_swipe_direction === 'right') {
+          // Landlord already swiped right - it's a mutual match
+          isMutualMatch = true;
           
-          // Send notification (implement later)
+          // Ensure status is active
+          if (match.status !== 'active') {
+            await query(
+              `UPDATE matches SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+              [match.id]
+            );
+          }
           console.log(`🎉 Mutual match! Tenant ${tenantId} and Property ${propertyId}`);
         }
       }
@@ -312,10 +327,33 @@ export const getMutualMatches = async (
     
     if (userRole === 'tenant') {
       // Get matches where tenant is current user and status is active
+      // Note: Use explicit column selection to avoid m.status being overwritten by p.status
       matchesResult = await query(
         `SELECT 
-          m.*,
-          p.*,
+          m.id,
+          m.tenant_id,
+          m.property_id,
+          m.match_score,
+          m.tenant_swiped,
+          m.tenant_swipe_direction,
+          m.tenant_swiped_at,
+          m.landlord_swiped,
+          m.landlord_swipe_direction,
+          m.landlord_swiped_at,
+          m.status as match_status,
+          m.created_at,
+          m.updated_at,
+          p.address,
+          p.neighborhood,
+          p.city,
+          p.configuration,
+          p.rent,
+          p.photos,
+          p.property_type,
+          p.furnishing,
+          p.size_sqft,
+          p.amenities,
+          p.status as property_status,
           u.name as landlord_name,
           u.phone as landlord_phone
          FROM matches m
@@ -329,8 +367,30 @@ export const getMutualMatches = async (
       // Get matches where landlord owns the property and status is active
       matchesResult = await query(
         `SELECT 
-          m.*,
-          p.*,
+          m.id,
+          m.tenant_id,
+          m.property_id,
+          m.match_score,
+          m.tenant_swiped,
+          m.tenant_swipe_direction,
+          m.tenant_swiped_at,
+          m.landlord_swiped,
+          m.landlord_swipe_direction,
+          m.landlord_swiped_at,
+          m.status as match_status,
+          m.created_at,
+          m.updated_at,
+          p.address,
+          p.neighborhood,
+          p.city,
+          p.configuration,
+          p.rent,
+          p.photos,
+          p.property_type,
+          p.furnishing,
+          p.size_sqft,
+          p.amenities,
+          p.status as property_status,
           u.name as tenant_name,
           u.phone as tenant_phone,
           tp.employment_status,
@@ -355,6 +415,202 @@ export const getMutualMatches = async (
       success: true,
       data: {
         matches: matchesResult.rows,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Landlord responds to tenant interest (accept/reject)
+ * 
+ * POST /api/matches/:matchId/respond
+ */
+export const respondToMatch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const landlordId = req.userId;
+    const userRole = req.userRole;
+    const { matchId } = req.params;
+    const { response } = req.body; // 'accept' or 'reject'
+    
+    if (!landlordId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+      return;
+    }
+    
+    if (userRole !== 'landlord') {
+      res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Only landlords can respond to matches' },
+      });
+      return;
+    }
+    
+    if (!['accept', 'reject'].includes(response)) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_RESPONSE', message: 'Response must be accept or reject' },
+      });
+      return;
+    }
+    
+    // Verify the match belongs to landlord's property
+    const matchResult = await query(
+      `SELECT m.*, p.landlord_id, p.address as property_address
+       FROM matches m
+       JOIN properties p ON m.property_id = p.id
+       WHERE m.id = $1`,
+      [matchId]
+    );
+    
+    if (matchResult.rowCount === 0) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Match not found' },
+      });
+      return;
+    }
+    
+    const match = matchResult.rows[0];
+    
+    if (match.landlord_id !== landlordId) {
+      res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'This match is not for your property' },
+      });
+      return;
+    }
+    
+    if (match.landlord_swiped) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'ALREADY_RESPONDED', message: 'You have already responded to this match' },
+      });
+      return;
+    }
+    
+    // Update match with landlord response
+    const newStatus = response === 'accept' ? 'active' : 'declined';
+    const swipeDirection = response === 'accept' ? 'right' : 'left';
+    
+    await query(
+      `UPDATE matches 
+       SET landlord_swiped = true,
+           landlord_swipe_direction = $1,
+           landlord_swiped_at = CURRENT_TIMESTAMP,
+           status = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [swipeDirection, newStatus, matchId]
+    );
+    
+    const isMutualMatch = response === 'accept';
+    
+    console.log(`📋 Landlord ${landlordId} ${response}ed match ${matchId} for property ${match.property_address}`);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        message: response === 'accept' ? 'Tenant accepted! You can now chat.' : 'Tenant declined.',
+        isMutualMatch,
+        matchId,
+        newStatus,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get interested tenants (tenants who swiped right but landlord hasn't responded)
+ * 
+ * GET /api/matches/interested-tenants
+ */
+export const getInterestedTenants = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const landlordId = req.userId;
+    const userRole = req.userRole;
+    
+    if (!landlordId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+      return;
+    }
+    
+    if (userRole !== 'landlord') {
+      res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Only landlords can view interested tenants' },
+      });
+      return;
+    }
+    
+    const result = await query(
+      `SELECT 
+        m.id as match_id,
+        m.match_score,
+        m.created_at as interested_at,
+        p.id as property_id,
+        p.address as property_address,
+        p.neighborhood,
+        p.configuration,
+        p.rent,
+        u.id as tenant_id,
+        u.name as tenant_name,
+        u.phone as tenant_phone,
+        tp.employment_status,
+        tp.company_name,
+        tp.lifestyle_tags
+       FROM matches m
+       JOIN properties p ON m.property_id = p.id
+       JOIN users u ON m.tenant_id = u.id
+       LEFT JOIN tenant_profiles tp ON u.id = tp.user_id
+       WHERE p.landlord_id = $1 
+         AND m.tenant_swipe_direction = 'right'
+         AND (m.landlord_swiped = false OR m.landlord_swiped IS NULL)
+       ORDER BY m.match_score DESC, m.created_at DESC`,
+      [landlordId]
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        count: result.rowCount,
+        tenants: result.rows.map((row: any) => ({
+          matchId: row.match_id,
+          matchScore: row.match_score,
+          interestedAt: row.interested_at,
+          property: {
+            id: row.property_id,
+            address: row.property_address,
+            neighborhood: row.neighborhood,
+            configuration: row.configuration,
+            rent: row.rent,
+          },
+          tenant: {
+            id: row.tenant_id,
+            name: row.tenant_name,
+            phone: row.tenant_phone,
+            employment: row.employment_status,
+            company: row.company_name,
+            lifestyle: row.lifestyle_tags,
+          },
+        })),
       },
     });
   } catch (error) {

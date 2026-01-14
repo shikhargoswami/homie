@@ -16,6 +16,9 @@ import { pool } from '../database/client';
 /**
  * Start or get existing conversation with a landlord about a property
  * POST /api/chat/conversations
+ * 
+ * For tenants: Pass property_id - landlord is found from property
+ * For landlords: Pass property_id and tenant_id
  */
 export async function startConversation(
   req: Request,
@@ -24,12 +27,13 @@ export async function startConversation(
 ): Promise<void> {
   try {
     const userId = req.userId;
+    const userRole = req.userRole;
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const { property_id } = req.body;
+    const { property_id, tenant_id } = req.body;
     if (!property_id) {
       res.status(400).json({ error: 'property_id is required' });
       return;
@@ -47,14 +51,35 @@ export async function startConversation(
     }
 
     const landlordId = propertyResult.rows[0].landlord_id;
+    
+    let conversationTenantId: string;
+    let conversationLandlordId: string;
 
-    // Prevent landlord from starting conversation with themselves
-    if (landlordId === userId) {
-      res.status(400).json({ error: 'Cannot start conversation with yourself' });
-      return;
+    if (userRole === 'landlord') {
+      // Landlord is starting conversation - need tenant_id
+      if (!tenant_id) {
+        res.status(400).json({ error: 'tenant_id is required for landlords' });
+        return;
+      }
+      // Verify this landlord owns the property
+      if (landlordId !== userId) {
+        res.status(403).json({ error: 'You do not own this property' });
+        return;
+      }
+      conversationTenantId = tenant_id;
+      conversationLandlordId = userId;
+    } else {
+      // Tenant is starting conversation
+      // Prevent landlord from starting conversation with themselves
+      if (landlordId === userId) {
+        res.status(400).json({ error: 'Cannot start conversation with yourself' });
+        return;
+      }
+      conversationTenantId = userId;
+      conversationLandlordId = landlordId;
     }
 
-    const conversation = await getOrCreateConversation(property_id, userId, landlordId);
+    const conversation = await getOrCreateConversation(property_id, conversationTenantId, conversationLandlordId);
 
     res.status(200).json({
       success: true,

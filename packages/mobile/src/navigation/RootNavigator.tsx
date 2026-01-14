@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { Property } from '../services/matching.service';
 import { apiClient } from '../services/api';
+import { LandlordProvider } from '../contexts/LandlordContext';
+import { LandlordSwipeProvider } from '../contexts/LandlordSwipeContext';
 
 // Auth screens
 import { PhoneInputScreen } from '../screens/auth/PhoneInputScreen';
@@ -28,6 +30,8 @@ import { PreferencesScreen } from '../screens/tenant/PreferencesScreen';
 import { DashboardScreen } from '../screens/landlord/DashboardScreen';
 import { MyPropertiesScreen } from '../screens/landlord/MyPropertiesScreen';
 import { AddPropertyScreen } from '../screens/landlord/AddPropertyScreen';
+import { LandlordMatchesScreen } from '../screens/landlord/LandlordMatchesScreen';
+import { LandlordExploreScreen } from '../screens/landlord/LandlordExploreScreen';
 
 // Shared screens
 import ChatListScreen from '../screens/shared/ChatListScreen';
@@ -47,7 +51,7 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   MainTabs: undefined;
   PropertyDetail: { property: Property; isMatched?: boolean };
-  Chat: { conversationId: string };
+  Chat: { conversation: { id: string; property_title?: string; other_user_name?: string; [key: string]: any } };
   Preferences: { isOnboarding?: boolean };
   EditProfile: undefined;
   Viewings: { userRole: 'tenant' | 'landlord' };
@@ -59,8 +63,19 @@ export type LandlordStackParamList = {
   AddProperty: undefined;
   EditProperty: { propertyId: string };
   PropertyDetail: { property: Property; isMatched?: boolean };
-  Chat: { conversationId: string };
+  Chat: { conversation: { id: string; property_title?: string; other_user_name?: string; [key: string]: any } };
   Viewings: { userRole: 'tenant' | 'landlord' };
+  LandlordMatches: { tab?: 'interested' | 'matches' } | undefined;
+  ViewingDetail: { viewingId: string };
+};
+
+// Landlord Tab Navigator param list
+export type LandlordTabParamList = {
+  Explore: undefined;
+  Dashboard: undefined;
+  Properties: { filter?: 'all' | 'available' | 'rented' } | undefined;
+  Messages: undefined;
+  Profile: undefined;
 };
 
 // Separate stacks for different navigation contexts
@@ -68,7 +83,7 @@ const AppStack = createNativeStackNavigator<AppStackParamList>();
 const LandlordStack = createNativeStackNavigator<LandlordStackParamList>();
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
 const Tab = createBottomTabNavigator();
-const LandlordTab = createBottomTabNavigator();
+const LandlordTab = createBottomTabNavigator<LandlordTabParamList>();
 
 /**
  * Auth Stack Navigator with Onboarding Flow
@@ -245,7 +260,9 @@ const LandlordTabs = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any;
 
-          if (route.name === 'Dashboard') {
+          if (route.name === 'Explore') {
+            iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'Dashboard') {
             iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'Properties') {
             iconName = focused ? 'home' : 'home-outline';
@@ -262,6 +279,7 @@ const LandlordTabs = () => {
         headerShown: false,
       })}
     >
+      <LandlordTab.Screen name="Explore" component={LandlordExploreScreen} />
       <LandlordTab.Screen name="Dashboard" component={DashboardScreen} />
       <LandlordTab.Screen name="Properties" component={MyPropertiesScreen} />
       <LandlordTab.Screen name="Messages" component={ChatListScreen} />
@@ -299,6 +317,15 @@ const MainLandlordStack = () => {
       <LandlordStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
       <LandlordStack.Screen name="Chat" component={ChatScreen} />
       <LandlordStack.Screen name="Viewings" component={ViewingsScreen} />
+      <LandlordStack.Screen 
+        name="LandlordMatches" 
+        component={LandlordMatchesScreen}
+        options={{ 
+          headerShown: true, 
+          title: 'Tenant Matches',
+          headerBackTitle: 'Back',
+        }} 
+      />
     </LandlordStack.Navigator>
   );
 };
@@ -328,7 +355,13 @@ export const RootNavigator = () => {
   // Determine which navigation stack to show based on user role
   const renderMainApp = () => {
     if (user?.role === 'landlord') {
-      return <MainLandlordStack />;
+      return (
+        <LandlordProvider>
+          <LandlordSwipeProvider>
+            <MainLandlordStack />
+          </LandlordSwipeProvider>
+        </LandlordProvider>
+      );
     }
     return <MainAppStack />;
   };
