@@ -32,6 +32,13 @@ import { MyPropertiesScreen } from '../screens/landlord/MyPropertiesScreen';
 import { AddPropertyScreen } from '../screens/landlord/AddPropertyScreen';
 import { LandlordMatchesScreen } from '../screens/landlord/LandlordMatchesScreen';
 import { LandlordExploreScreen } from '../screens/landlord/LandlordExploreScreen';
+import { AddPropertyStep1Screen } from '../screens/landlord/AddPropertyStep1Screen';
+import { AddPropertyStep2Screen } from '../screens/landlord/AddPropertyStep2Screen';
+import { AddPropertyStep3Screen } from '../screens/landlord/AddPropertyStep3Screen';
+import { AddPropertyStep4Screen } from '../screens/landlord/AddPropertyStep4Screen';
+
+// Contexts
+import { AddPropertyProvider } from '../contexts/AddPropertyContext';
 
 // Shared screens
 import ChatListScreen from '../screens/shared/ChatListScreen';
@@ -61,6 +68,10 @@ export type AppStackParamList = {
 export type LandlordStackParamList = {
   LandlordTabs: undefined;
   AddProperty: undefined;
+  AddPropertyStep1: undefined;
+  AddPropertyStep2: undefined;
+  AddPropertyStep3: undefined;
+  AddPropertyStep4: undefined;
   EditProperty: { propertyId: string };
   PropertyDetail: { property: Property; isMatched?: boolean };
   Chat: { conversation: { id: string; property_title?: string; other_user_name?: string; [key: string]: any } };
@@ -310,23 +321,30 @@ const MainAppStack = () => {
  */
 const MainLandlordStack = () => {
   return (
-    <LandlordStack.Navigator screenOptions={{ headerShown: false }}>
-      <LandlordStack.Screen name="LandlordTabs" component={LandlordTabs} />
-      <LandlordStack.Screen name="AddProperty" component={AddPropertyScreen} />
-      <LandlordStack.Screen name="EditProperty" component={AddPropertyScreen} />
-      <LandlordStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
-      <LandlordStack.Screen name="Chat" component={ChatScreen} />
-      <LandlordStack.Screen name="Viewings" component={ViewingsScreen} />
-      <LandlordStack.Screen 
-        name="LandlordMatches" 
-        component={LandlordMatchesScreen}
-        options={{ 
-          headerShown: true, 
-          title: 'Tenant Matches',
-          headerBackTitle: 'Back',
-        }} 
-      />
-    </LandlordStack.Navigator>
+    <AddPropertyProvider>
+      <LandlordStack.Navigator screenOptions={{ headerShown: false }}>
+        <LandlordStack.Screen name="LandlordTabs" component={LandlordTabs} />
+        {/* Property Wizard Screens */}
+        <LandlordStack.Screen name="AddProperty" component={AddPropertyStep1Screen} />
+        <LandlordStack.Screen name="AddPropertyStep1" component={AddPropertyStep1Screen} />
+        <LandlordStack.Screen name="AddPropertyStep2" component={AddPropertyStep2Screen} />
+        <LandlordStack.Screen name="AddPropertyStep3" component={AddPropertyStep3Screen} />
+        <LandlordStack.Screen name="AddPropertyStep4" component={AddPropertyStep4Screen} />
+        <LandlordStack.Screen name="EditProperty" component={AddPropertyStep1Screen} />
+        <LandlordStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
+        <LandlordStack.Screen name="Chat" component={ChatScreen} />
+        <LandlordStack.Screen name="Viewings" component={ViewingsScreen} />
+        <LandlordStack.Screen 
+          name="LandlordMatches" 
+          component={LandlordMatchesScreen}
+          options={{ 
+            headerShown: true, 
+            title: 'Tenant Matches',
+            headerBackTitle: 'Back',
+          }} 
+        />
+      </LandlordStack.Navigator>
+    </AddPropertyProvider>
   );
 };
 
@@ -367,13 +385,29 @@ export const RootNavigator = () => {
   };
 
   // Check if user needs to complete onboarding
+  // Only check this when user data is fully loaded
   const needsOnboarding = isAuthenticated && user && !user.profileCompleted;
+  
+  // Debug: Log navigation decision
+  console.log('🧭 Navigation decision:', {
+    isAuthenticated,
+    hasUser: !!user,
+    profileCompleted: user?.profileCompleted,
+    role: user?.role,
+    needsOnboarding,
+  });
 
   return (
     <NavigationContainer>
       {!isAuthenticated ? (
         // Not logged in - show login flow
         <AuthStack refetchUser={refetchUser} />
+      ) : !user ? (
+        // Authenticated but user data not yet loaded - show loading
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
       ) : needsOnboarding ? (
         // Logged in but profile incomplete - show onboarding
         <AuthStack initialRouteName="UserTypeSelection" refetchUser={refetchUser} />

@@ -105,8 +105,9 @@ export const authenticate = async (
     }
     
     // Attach user info to request
+    // Use role from database (not token) to ensure it's always current
     req.userId = decoded.userId;
-    req.userRole = decoded.role;
+    req.userRole = userResult.rows[0].role;
     
     next();
   } catch (error) {

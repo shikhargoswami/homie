@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,19 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '../../services/api';
+
+interface VerificationStatus {
+  phoneVerified: boolean;
+  emailVerified: boolean;
+  idVerified: boolean;
+  propertyOwnershipVerified: boolean;
+  verificationLevel: string;
+  trustScore: number;
+}
 
 interface LandlordProfile {
   name: string;
@@ -47,7 +58,7 @@ export const LandlordOnboardingScreen: React.FC<Props> = ({
   isLoading,
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 5; // Updated from 4 to 5 to include verification step
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -55,6 +66,23 @@ export const LandlordOnboardingScreen: React.FC<Props> = ({
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [experience, setExperience] = useState<'new' | 'experienced' | 'professional'>('experienced');
+
+  // Verification state
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
+    phoneVerified: true, // Always true via OTP login
+    emailVerified: false,
+    idVerified: false,
+    propertyOwnershipVerified: false,
+    verificationLevel: 'basic',
+    trustScore: 20,
+  });
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [idDocumentType, setIdDocumentType] = useState<'aadhar' | 'pan' | null>(null);
+  const [idDocumentNumber, setIdDocumentNumber] = useState('');
+  const [showIdInput, setShowIdInput] = useState(false);
+  const [showPropertyUpload, setShowPropertyUpload] = useState(false);
 
   const toggleSelection = (
     item: string,
@@ -86,18 +114,21 @@ export const LandlordOnboardingScreen: React.FC<Props> = ({
         }
         return true;
       case 2:
+        // Verification step - always valid (can be skipped)
+        return true;
+      case 3:
         if (!propertiesCount) {
           Alert.alert('Required', 'Please select your property ownership type');
           return false;
         }
         return true;
-      case 3:
+      case 4:
         if (propertyTypes.length === 0) {
           Alert.alert('Required', 'Please select at least one property type');
           return false;
         }
         return true;
-      case 4:
+      case 5:
         if (selectedLocations.length === 0) {
           Alert.alert('Required', 'Please select at least one location');
           return false;
@@ -206,6 +237,347 @@ export const LandlordOnboardingScreen: React.FC<Props> = ({
           ))}
         </View>
       </View>
+    </View>
+  );
+
+  // Verification helper functions
+  const handleSendEmailOtp = async () => {
+    if (!email || !validateEmail(email)) {
+      Alert.alert('Error', 'Please enter a valid email address in Step 1');
+      return;
+    }
+    
+    setVerificationLoading(true);
+    try {
+      await apiClient.post('/api/landlord/verification/email/send', { email });
+      setEmailOtpSent(true);
+      Alert.alert('Success', 'Verification code sent to your email');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error?.message || 'Failed to send verification email');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    if (!emailOtp || emailOtp.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      return;
+    }
+    
+    setVerificationLoading(true);
+    try {
+      const response = await apiClient.post('/api/landlord/verification/email/verify', { otp: emailOtp });
+      if (response.data?.data?.verification) {
+        setVerificationStatus(response.data.data.verification);
+      }
+      setEmailOtpSent(false);
+      setEmailOtp('');
+      Alert.alert('Success', 'Email verified successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error?.message || 'Invalid OTP');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleVerifyId = async () => {
+    if (!idDocumentType || !idDocumentNumber) {
+      Alert.alert('Error', 'Please select document type and enter number');
+      return;
+    }
+    
+    setVerificationLoading(true);
+    try {
+      const response = await apiClient.post('/api/landlord/verification/id', {
+        documentType: idDocumentType,
+        documentNumber: idDocumentNumber.toUpperCase().replace(/\s/g, ''),
+      });
+      if (response.data?.data?.verification) {
+        setVerificationStatus(response.data.data.verification);
+      }
+      setShowIdInput(false);
+      setIdDocumentNumber('');
+      setIdDocumentType(null);
+      Alert.alert('Success', 'ID verified successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error?.message || 'ID verification failed');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleUploadPropertyDocs = async () => {
+    // In production, this would open document picker
+    // For MVP, simulate document upload
+    setVerificationLoading(true);
+    try {
+      const response = await apiClient.post('/api/landlord/verification/property-docs', {
+        documentUrls: ['placeholder-doc-url'],
+        documentType: 'electricity_bill',
+      });
+      if (response.data?.data?.verification) {
+        setVerificationStatus(response.data.data.verification);
+      }
+      setShowPropertyUpload(false);
+      Alert.alert('Success', 'Property documents submitted!');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error?.message || 'Document upload failed');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleSkipVerification = async () => {
+    try {
+      await apiClient.post('/api/landlord/verification/skip');
+    } catch {
+      // Silently fail - we'll continue anyway
+    }
+    setCurrentStep(currentStep + 1);
+  };
+
+  const renderVerificationStep = () => (
+    <View style={styles.stepContainer}>
+      <View style={styles.stepHeader}>
+        <Ionicons name="shield-checkmark" size={48} color="#10b981" />
+        <Text style={styles.stepTitle}>Get Verified & Build Trust 🛡️</Text>
+        <Text style={styles.stepSubtitle}>
+          Verified landlords get 3x more tenant matches
+        </Text>
+      </View>
+
+      <ScrollView style={styles.verificationScroll} showsVerticalScrollIndicator={false}>
+        {/* Phone Verified - Always done */}
+        <View style={[styles.verificationCard, styles.verificationCardDone]}>
+          <View style={styles.verificationCardHeader}>
+            <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+            <View style={styles.verificationCardContent}>
+              <Text style={styles.verificationCardTitle}>Phone Verified</Text>
+              <Text style={styles.verificationCardDesc}>Verified via OTP</Text>
+            </View>
+            <Text style={styles.verificationBadgeDone}>Done</Text>
+          </View>
+        </View>
+
+        {/* Email Verification */}
+        <View style={[
+          styles.verificationCard,
+          verificationStatus.emailVerified && styles.verificationCardDone
+        ]}>
+          <View style={styles.verificationCardHeader}>
+            <Ionicons 
+              name={verificationStatus.emailVerified ? "checkmark-circle" : "mail"} 
+              size={24} 
+              color={verificationStatus.emailVerified ? "#10b981" : "#6366f1"} 
+            />
+            <View style={styles.verificationCardContent}>
+              <Text style={styles.verificationCardTitle}>Email Verification</Text>
+              <Text style={styles.verificationCardDesc}>
+                {verificationStatus.emailVerified 
+                  ? 'Email verified' 
+                  : email 
+                    ? `Verify ${email}` 
+                    : 'Add email in previous step'}
+              </Text>
+            </View>
+            {verificationStatus.emailVerified && (
+              <Text style={styles.verificationBadgeDone}>Done</Text>
+            )}
+          </View>
+          
+          {!verificationStatus.emailVerified && email && (
+            <View style={styles.verificationCardActions}>
+              {!emailOtpSent ? (
+                <TouchableOpacity 
+                  style={styles.verificationBtn}
+                  onPress={handleSendEmailOtp}
+                  disabled={verificationLoading}
+                >
+                  {verificationLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.verificationBtnText}>Verify Email</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#fff" />
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.otpInputContainer}>
+                  <TextInput
+                    style={styles.otpInput}
+                    placeholder="Enter 6-digit OTP"
+                    value={emailOtp}
+                    onChangeText={setEmailOtp}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                  />
+                  <TouchableOpacity 
+                    style={styles.verificationBtnSmall}
+                    onPress={handleVerifyEmailOtp}
+                    disabled={verificationLoading}
+                  >
+                    {verificationLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.verificationBtnText}>Verify</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* ID Verification */}
+        <View style={[
+          styles.verificationCard,
+          verificationStatus.idVerified && styles.verificationCardDone
+        ]}>
+          <View style={styles.verificationCardHeader}>
+            <Ionicons 
+              name={verificationStatus.idVerified ? "checkmark-circle" : "card"} 
+              size={24} 
+              color={verificationStatus.idVerified ? "#10b981" : "#f59e0b"} 
+            />
+            <View style={styles.verificationCardContent}>
+              <Text style={styles.verificationCardTitle}>ID Verification (Recommended)</Text>
+              <Text style={styles.verificationCardDesc}>
+                {verificationStatus.idVerified 
+                  ? 'ID verified' 
+                  : 'Upload Aadhar/PAN for instant trust'}
+              </Text>
+            </View>
+            {verificationStatus.idVerified && (
+              <Text style={styles.verificationBadgeDone}>Done</Text>
+            )}
+          </View>
+          
+          {!verificationStatus.idVerified && (
+            <View style={styles.verificationCardActions}>
+              {!showIdInput ? (
+                <TouchableOpacity 
+                  style={[styles.verificationBtn, { backgroundColor: '#f59e0b' }]}
+                  onPress={() => setShowIdInput(true)}
+                >
+                  <Text style={styles.verificationBtnText}>Verify ID</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.idInputContainer}>
+                  <View style={styles.idTypeButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.idTypeBtn,
+                        idDocumentType === 'aadhar' && styles.idTypeBtnSelected
+                      ]}
+                      onPress={() => setIdDocumentType('aadhar')}
+                    >
+                      <Text style={[
+                        styles.idTypeBtnText,
+                        idDocumentType === 'aadhar' && styles.idTypeBtnTextSelected
+                      ]}>Aadhar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.idTypeBtn,
+                        idDocumentType === 'pan' && styles.idTypeBtnSelected
+                      ]}
+                      onPress={() => setIdDocumentType('pan')}
+                    >
+                      <Text style={[
+                        styles.idTypeBtnText,
+                        idDocumentType === 'pan' && styles.idTypeBtnTextSelected
+                      ]}>PAN</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={styles.idNumberInput}
+                    placeholder={idDocumentType === 'aadhar' ? '12-digit Aadhar' : 'PAN (e.g. ABCDE1234F)'}
+                    value={idDocumentNumber}
+                    onChangeText={setIdDocumentNumber}
+                    autoCapitalize="characters"
+                    maxLength={idDocumentType === 'aadhar' ? 12 : 10}
+                  />
+                  <TouchableOpacity 
+                    style={[styles.verificationBtn, { backgroundColor: '#f59e0b' }]}
+                    onPress={handleVerifyId}
+                    disabled={verificationLoading}
+                  >
+                    {verificationLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.verificationBtnText}>Submit</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Property Ownership Verification */}
+        <View style={[
+          styles.verificationCard,
+          verificationStatus.propertyOwnershipVerified && styles.verificationCardDone
+        ]}>
+          <View style={styles.verificationCardHeader}>
+            <Ionicons 
+              name={verificationStatus.propertyOwnershipVerified ? "checkmark-circle" : "document-text"} 
+              size={24} 
+              color={verificationStatus.propertyOwnershipVerified ? "#10b981" : "#8b5cf6"} 
+            />
+            <View style={styles.verificationCardContent}>
+              <Text style={styles.verificationCardTitle}>Property Ownership Proof</Text>
+              <Text style={styles.verificationCardDesc}>
+                {verificationStatus.propertyOwnershipVerified 
+                  ? 'Documents verified' 
+                  : 'Upload docs for "Verified Owner" badge'}
+              </Text>
+            </View>
+            {verificationStatus.propertyOwnershipVerified && (
+              <Text style={styles.verificationBadgeDone}>Done</Text>
+            )}
+          </View>
+          
+          {!verificationStatus.propertyOwnershipVerified && (
+            <View style={styles.verificationCardActions}>
+              <TouchableOpacity 
+                style={[styles.verificationBtn, { backgroundColor: '#8b5cf6' }]}
+                onPress={handleUploadPropertyDocs}
+                disabled={verificationLoading}
+              >
+                {verificationLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.verificationBtnText}>Upload Documents</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#fff" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Trust Score Display */}
+        <View style={styles.trustScoreCard}>
+          <Text style={styles.trustScoreLabel}>Your Trust Score</Text>
+          <View style={styles.trustScoreBar}>
+            <View style={[styles.trustScoreFill, { width: `${verificationStatus.trustScore}%` }]} />
+          </View>
+          <Text style={styles.trustScoreValue}>{verificationStatus.trustScore}/100</Text>
+        </View>
+
+        {/* Skip Option */}
+        <TouchableOpacity 
+          style={styles.skipButton}
+          onPress={handleSkipVerification}
+        >
+          <Text style={styles.skipButtonText}>Skip for Now</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 
@@ -389,10 +761,12 @@ export const LandlordOnboardingScreen: React.FC<Props> = ({
       case 1:
         return renderStep1();
       case 2:
-        return renderStep2();
+        return renderVerificationStep();
       case 3:
-        return renderStep3();
+        return renderStep2();
       case 4:
+        return renderStep3();
+      case 5:
         return renderStep4();
       default:
         return null;
@@ -761,6 +1135,170 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Verification Step Styles
+  verificationScroll: {
+    maxHeight: 480,
+  },
+  verificationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  verificationCardDone: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+  },
+  verificationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  verificationCardContent: {
+    flex: 1,
+  },
+  verificationCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  verificationCardDesc: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  verificationBadgeDone: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10b981',
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  verificationCardActions: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  verificationBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#6366f1',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  verificationBtnSmall: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verificationBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  otpInputContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  otpInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: '#f9fafb',
+  },
+  idInputContainer: {
+    gap: 10,
+  },
+  idTypeButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  idTypeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+  },
+  idTypeBtnSelected: {
+    backgroundColor: '#fef3c7',
+    borderColor: '#f59e0b',
+  },
+  idTypeBtnText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  idTypeBtnTextSelected: {
+    color: '#92400e',
+  },
+  idNumberInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: '#f9fafb',
+  },
+  trustScoreCard: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  trustScoreLabel: {
+    fontSize: 13,
+    color: '#0369a1',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  trustScoreBar: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#e0f2fe',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  trustScoreFill: {
+    height: '100%',
+    backgroundColor: '#0ea5e9',
+    borderRadius: 4,
+  },
+  trustScoreValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0369a1',
+    marginTop: 6,
+  },
+  skipButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 16,
+  },
+  skipButtonText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textDecorationLine: 'underline',
   },
 });
 

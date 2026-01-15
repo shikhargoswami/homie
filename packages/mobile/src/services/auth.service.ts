@@ -141,6 +141,8 @@ class AuthService {
       '/api/auth/me'
     );
     
+    console.log('📱 getCurrentUser API response:', JSON.stringify(response.data.user, null, 2));
+    
     // Update stored user data
     await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     

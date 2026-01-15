@@ -28,6 +28,8 @@ export const getTenantSwipeFeed = async (
     const landlordId = req.userId;
     const userRole = req.userRole;
 
+    console.log('[getTenantSwipeFeed] landlordId:', landlordId, 'userRole:', userRole);
+
     if (!landlordId) {
       res.status(401).json({
         success: false,

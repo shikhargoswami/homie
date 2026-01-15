@@ -544,6 +544,13 @@ export const getCurrentUser = async (
     
     const user = userResult.rows[0];
     
+    console.log('📤 /api/auth/me returning user:', {
+      id: user.id,
+      phone: user.phone,
+      role: user.role,
+      profile_completed: user.profile_completed,
+    });
+    
     res.status(200).json({
       success: true,
       data: {

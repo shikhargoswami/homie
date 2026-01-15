@@ -18,6 +18,15 @@ import {
   getPendingSwipeCount,
   declineAllPendingSwipes,
 } from '../controllers/landlord-swipe.controller';
+import {
+  getVerificationStatus,
+  sendEmailVerification,
+  verifyEmailOtp,
+  submitIdVerification,
+  submitPropertyDocuments,
+  skipVerification,
+  getVerificationBadges,
+} from '../controllers/landlord-verification.controller';
 
 const router = express.Router();
 
@@ -56,3 +65,12 @@ landlordRoutes.get('/swipe/feed', getTenantSwipeFeed);
 landlordRoutes.post('/swipe', recordLandlordSwipe);
 landlordRoutes.get('/swipe/count', getPendingSwipeCount);
 landlordRoutes.post('/swipe/decline-all/:propertyId', declineAllPendingSwipes);
+
+// Landlord Verification Routes
+landlordRoutes.get('/verification/status', getVerificationStatus);
+landlordRoutes.post('/verification/email/send', sendEmailVerification);
+landlordRoutes.post('/verification/email/verify', verifyEmailOtp);
+landlordRoutes.post('/verification/id', submitIdVerification);
+landlordRoutes.post('/verification/property-docs', submitPropertyDocuments);
+landlordRoutes.post('/verification/skip', skipVerification);
+landlordRoutes.get('/verification/badges', getVerificationBadges);

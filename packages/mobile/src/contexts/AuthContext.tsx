@@ -5,7 +5,7 @@ import { apiClient } from '../services/api';
 import type { User, AuthResponse, OTPResponse } from '../services/auth.service';
 
 // 🔧 DEV FLAG: Set to true to always start from login screen
-const DEV_FORCE_LOGOUT = true;
+const DEV_FORCE_LOGOUT = false; // Set to false for normal testing
 // 🔧 DEV FLAG: Set to true to reset test user (9999999999) data on app start
 const DEV_RESET_TEST_USER = false; // Disabled to preserve test data
 
@@ -119,7 +119,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return authService.verifyOTP(phone, otp);
     },
     onSuccess: (data) => {
-      console.log('🔑 verifyOTPMutation.onSuccess - setting isAuthenticated to true');
+      console.log('🔑 verifyOTPMutation.onSuccess - user data:', JSON.stringify(data.data.user, null, 2));
+      console.log('🔑 profileCompleted:', data.data.user.profileCompleted);
       setIsAuthenticated(true);
       queryClient.setQueryData(['user'], data.data.user);
     },
