@@ -40,6 +40,8 @@ interface UserViolationHistory {
 const PHONE_PATTERNS = [
   // Standard formats
   /\b(\+91|91|0)?[-.\s]?[6-9]\d{9}\b/g,
+  // With spaces in the middle (e.g., "098765 43210" or "98765 43210")
+  /\b0?[6-9]\d{4}[\s-]\d{5}\b/g,
   // With word separators (e.g., "nine eight seven...")
   /\b(nine|eight|seven|six|five|four|three|two|one|zero|nau|aath|saat|chhe|paanch|chaar|teen|do|ek|shunya)\b/gi,
   // Obscured (e.g., "987 six 543 two 10")
@@ -61,8 +63,9 @@ const SOCIAL_MEDIA_PATTERNS = [
   // Instagram
   /\b(instagram|insta|ig)\s*[:\-]?\s*@?[A-Za-z0-9._]+/gi,
   /\b@[A-Za-z0-9._]{3,30}\b/g, // Generic handles
-  // WhatsApp
-  /\b(whatsapp|wa|wp)\s*[:\-]?\s*[\d\s@]+/gi,
+  // WhatsApp - detect mention of whatsapp even without numbers
+  /\b(whatsapp|wa|wp)\s*[:\-]?\s*([\d\s@]+)?/gi,
+  /\b(add|contact|message|text|call)\s+(me\s+)?(on\s+)?(whatsapp|wa|wp)\b/gi,
   // Telegram
   /\b(telegram|tg)\s*[:\-]?\s*@?[A-Za-z0-9._]+/gi,
   // Facebook
@@ -72,8 +75,9 @@ const SOCIAL_MEDIA_PATTERNS = [
 // External meeting suggestion patterns
 const EXTERNAL_MEETING_PATTERNS = [
   /\b(meet|call|contact)\s*(me|us)\s*(outside|directly|personally|privately)/gi,
-  /\b(give|share|send)\s*(your|me|my)\s*(number|phone|mobile|contact)/gi,
+  /\b(give|share|send)\s+(me\s+)?(your|my)?\s*(number|phone|mobile|contact)/gi,
   /\blet'?s?\s*(talk|chat|meet)\s*(outside|off)\s*(this|the)?\s*(app|platform)?/gi,
+  /\b(can\s+we|we\s+can|shall\s+we)\s*(talk|chat|meet)\s*(outside|off)\s*(this|the)?\s*(app|platform)?/gi,
   /\b(reach|contact)\s*(me|out)\s*(on|via|through)\s*(my|personal)/gi,
 ];
 
@@ -224,7 +228,9 @@ class ChatAntiBypassService {
       '@morning', '@evening', '@night', '@today', '@tomorrow',
       '@thanks', '@please', '@hello', '@hi',
     ];
-    return falsePositives.some(fp => text.toLowerCase().includes(fp));
+    // Check for exact match only (the handle equals the false positive)
+    const lowerText = text.toLowerCase().trim();
+    return falsePositives.some(fp => lowerText === fp);
   }
 
   /**

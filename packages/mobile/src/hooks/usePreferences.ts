@@ -137,7 +137,7 @@ export const preferencesToFilters = (preferences: UserPreferences | undefined) =
     };
 
     for (const tag of preferences.lifestyle.tags) {
-      if (tagMappings[tag]) {
+      if (tagMappings[tag] && !lifestyleFilters.includes(tagMappings[tag])) {
         lifestyleFilters.push(tagMappings[tag]);
       }
     }

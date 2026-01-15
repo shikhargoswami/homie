@@ -2,6 +2,11 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { ViewingsScreen } from '../ViewingsScreen';
 
+// Mock @expo/vector-icons
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+}));
+
 // Mock the api client
 jest.mock('@services/api', () => ({
   apiClient: {
@@ -33,12 +38,20 @@ describe('ViewingsScreen', () => {
       },
     };
 
-    it('renders correctly for tenant', () => {
+    it('renders correctly for tenant', async () => {
+      const { apiClient } = require('@services/api');
+      apiClient.get.mockResolvedValueOnce({
+        success: true,
+        data: { viewings: [] },
+      });
+
       const { getByText } = render(
         <ViewingsScreen navigation={mockNavigation} route={mockRoute} />
       );
 
-      expect(getByText('Viewings')).toBeTruthy();
+      await waitFor(() => {
+        expect(getByText('Viewings')).toBeTruthy();
+      });
       expect(getByText('Upcoming')).toBeTruthy();
       expect(getByText('Past')).toBeTruthy();
     });
@@ -75,9 +88,19 @@ describe('ViewingsScreen', () => {
     });
 
     it('switches between upcoming and past tabs', async () => {
+      const { apiClient } = require('@services/api');
+      apiClient.get.mockResolvedValueOnce({
+        success: true,
+        data: { viewings: [] },
+      });
+
       const { getByText } = render(
         <ViewingsScreen navigation={mockNavigation} route={mockRoute} />
       );
+
+      await waitFor(() => {
+        expect(getByText('Upcoming')).toBeTruthy();
+      });
 
       const pastTab = getByText('Past');
       fireEvent.press(pastTab);
@@ -97,12 +120,20 @@ describe('ViewingsScreen', () => {
       },
     };
 
-    it('renders correctly for landlord', () => {
+    it('renders correctly for landlord', async () => {
+      const { apiClient } = require('@services/api');
+      apiClient.get.mockResolvedValueOnce({
+        success: true,
+        data: { viewings: [] },
+      });
+
       const { getByText } = render(
         <ViewingsScreen navigation={mockNavigation} route={mockRoute} />
       );
 
-      expect(getByText('Viewings')).toBeTruthy();
+      await waitFor(() => {
+        expect(getByText('Viewings')).toBeTruthy();
+      });
     });
 
     it('loads landlord viewings', async () => {
@@ -157,7 +188,9 @@ describe('ViewingsScreen', () => {
 
   it('displays empty state when no viewings', async () => {
     const { apiClient } = require('@services/api');
-    apiClient.get.mockResolvedValueOnce({
+    // Ensure clean mock state
+    apiClient.get.mockReset();
+    apiClient.get.mockResolvedValue({
       success: true,
       data: {
         viewings: [],

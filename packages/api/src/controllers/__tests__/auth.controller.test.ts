@@ -54,17 +54,15 @@ describe('Auth Controller', () => {
     });
     
     it('should enforce rate limiting', async () => {
-      const phone = '9876543210';
+      const phone = '9876543299'; // Use unique phone to avoid conflicts
       
-      // Send 3 OTPs (max allowed)
-      for (let i = 0; i < 3; i++) {
-        await request(app)
-          .post('/api/auth/request-otp')
-          .send({ phone })
-          .expect(200);
-      }
+      // In test mode, rate limit is 50 requests per hour
+      // Set the rate limit counter to 49 in Redis, then the next request should trigger 429
+      const cleanPhone = phone.replace(/\D/g, '');
+      const rateLimitKey = `otp:ratelimit:${cleanPhone}`;
+      await redisClient.setEx(rateLimitKey, 3600, '50'); // Set at limit
       
-      // 4th request should be rate limited
+      // This request should be rate limited
       const response = await request(app)
         .post('/api/auth/request-otp')
         .send({ phone })

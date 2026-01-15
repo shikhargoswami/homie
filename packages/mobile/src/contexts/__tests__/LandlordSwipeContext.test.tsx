@@ -463,7 +463,7 @@ describe('Helper functions', () => {
     });
 
     it('should handle small amounts', () => {
-      expect(formatBudgetRange(500, 1000)).toBe('₹1K - ₹1K');
+      expect(formatBudgetRange(500, 1000)).toBe('₹500 - ₹1K');
     });
   });
 

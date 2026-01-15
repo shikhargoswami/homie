@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals';
 import React from 'react';
-import { renderHook, act, waitFor } from '@testing-library/react-hooks';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 
 /**
  * ChatContext Tests
@@ -134,11 +134,14 @@ describe('ChatContext', () => {
     });
 
     it('should throw error when used outside provider', () => {
-      const { result } = renderHook(() => useChatContext());
+      // Suppress console.error for this test as React will log the error
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       
-      expect(result.error).toEqual(
-        new Error('useChatContext must be used within a ChatProvider')
-      );
+      expect(() => {
+        renderHook(() => useChatContext());
+      }).toThrow('useChatContext must be used within a ChatProvider');
+      
+      consoleSpy.mockRestore();
     });
   });
 
@@ -644,6 +647,12 @@ describe('ChatContext message handling', () => {
 
       const { result } = renderHook(() => useChatContext(), { wrapper });
 
+      // Wait for socket initialization (useEffect runs async)
+      await waitFor(() => {
+        // The socket mock's 'on' should have been called for 'connect'
+        expect(mockSocket.on).toHaveBeenCalled();
+      });
+
       await act(async () => {
         await result.current.sendMessage('conv-1', 'Socket message', 'text', { key: 'value' });
       });
@@ -658,10 +667,15 @@ describe('ChatContext message handling', () => {
   });
 
   describe('sendTyping', () => {
-    it('should emit typing event', () => {
+    it('should emit typing event', async () => {
       mockSocket.connected = true;
 
       const { result } = renderHook(() => useChatContext(), { wrapper });
+
+      // Wait for socket initialization
+      await waitFor(() => {
+        expect(mockSocket.on).toHaveBeenCalled();
+      });
 
       act(() => {
         result.current.sendTyping('conv-1');

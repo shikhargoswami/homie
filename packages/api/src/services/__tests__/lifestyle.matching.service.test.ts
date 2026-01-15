@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, afterEach, jest } from '@jest/globals';
+import type { Mock } from 'jest-mock';
 import { lifestyleMatchingService } from '../lifestyle.matching.service';
-import { query } from '../../database/client';
 import { LifestyleTag } from '@homie/shared';
 
 // Mock the database
@@ -15,7 +15,8 @@ jest.mock('../../database/client', () => ({
   query: jest.fn(),
 }));
 
-const mockQuery = query as jest.Mock;
+const { query } = require('../../database/client');
+const mockQuery = query as Mock<any>;
 
 describe('LifestyleMatchingService', () => {
   afterEach(() => {

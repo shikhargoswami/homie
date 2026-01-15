@@ -210,8 +210,8 @@ describe('Users API - Onboarding Endpoints', () => {
         .send();
 
       expect(response.status).toBe(200);
-      expect(response.body.data.preferences.min_budget).toBe(10000);
-      expect(response.body.data.preferences.max_budget).toBe(50000);
+      expect(response.body.data.preferences.budget_min).toBe(10000);
+      expect(response.body.data.preferences.budget_max).toBe(50000);
     });
   });
 });

@@ -401,10 +401,14 @@ describe('Swipe Limit', () => {
   });
   
   it('should block swipes when daily limit is reached', async () => {
-    // Set swipe count to max (50)
-    const today = new Date().toISOString().split('T')[0];
-    const swipeCountKey = `swipes:daily:${tenant.id}:${today}`;
-    await redisClient.set(swipeCountKey, '50');
+    // Set swipe count to max (50) in database
+    await query(
+      `INSERT INTO daily_swipe_counts (user_id, swipe_date, swipe_count, super_like_count)
+       VALUES ($1, CURRENT_DATE, 50, 0)
+       ON CONFLICT (user_id, swipe_date) 
+       DO UPDATE SET swipe_count = 50`,
+      [tenant.id]
+    );
     
     const response = await request(app)
       .post('/api/matches/swipe')
@@ -419,10 +423,14 @@ describe('Swipe Limit', () => {
   });
   
   it('should block recommendations when daily limit is reached', async () => {
-    // Set swipe count to max (50)
-    const today = new Date().toISOString().split('T')[0];
-    const swipeCountKey = `swipes:daily:${tenant.id}:${today}`;
-    await redisClient.set(swipeCountKey, '50');
+    // Set swipe count to max (50) in database
+    await query(
+      `INSERT INTO daily_swipe_counts (user_id, swipe_date, swipe_count, super_like_count)
+       VALUES ($1, CURRENT_DATE, 50, 0)
+       ON CONFLICT (user_id, swipe_date) 
+       DO UPDATE SET swipe_count = 50`,
+      [tenant.id]
+    );
     
     const response = await request(app)
       .get('/api/matches/recommendations')

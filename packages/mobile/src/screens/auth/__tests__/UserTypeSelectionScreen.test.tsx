@@ -44,8 +44,12 @@ describe('UserTypeSelectionScreen', () => {
       <UserTypeSelectionScreen onSelect={mockOnSelect} />
     );
 
-    const continueButton = getByText('Continue').parent;
-    expect(continueButton?.props.accessibilityState?.disabled || continueButton?.props.disabled).toBeTruthy();
+    // Button should not be pressable when disabled - pressing it shouldn't call onSelect
+    const continueButton = getByText('Continue');
+    fireEvent.press(continueButton);
+    
+    // onSelect should not have been called since no option was selected
+    expect(mockOnSelect).not.toHaveBeenCalled();
   });
 
   it('enables continue button when an option is selected', () => {

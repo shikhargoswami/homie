@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import type { Mock } from 'jest-mock';
 import { subscriptionService } from '../subscription.service';
 import { SubscriptionTier, SUBSCRIPTION_LIMITS } from '@homie/shared';
-import { pgPool as pool } from '../../database/client';
 
 // Mock the database pool
 jest.mock('../../database/client', () => ({
@@ -18,6 +18,8 @@ jest.mock('../../database/client', () => ({
   },
 }));
 
+const { pgPool: pool } = require('../../database/client');
+
 describe('SubscriptionService', () => {
   let mockClient: any;
 
@@ -26,7 +28,7 @@ describe('SubscriptionService', () => {
       query: jest.fn(),
       release: jest.fn(),
     };
-    (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+    (pool.connect as Mock<any>).mockResolvedValue(mockClient);
   });
 
   afterEach(() => {
