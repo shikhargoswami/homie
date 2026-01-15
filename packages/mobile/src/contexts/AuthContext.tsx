@@ -4,10 +4,23 @@ import { authService } from '../services/auth.service';
 import { apiClient } from '../services/api';
 import type { User, AuthResponse, OTPResponse } from '../services/auth.service';
 
-// 🔧 DEV FLAG: Set to true to always start from login screen
-const DEV_FORCE_LOGOUT = false; // Set to false for normal testing
-// 🔧 DEV FLAG: Set to true to reset test user (9999999999) data on app start
-const DEV_RESET_TEST_USER = false; // Disabled to preserve test data
+// ============================================================
+// 🔧 DEVELOPER TESTING FLAGS
+// ============================================================
+// Set these to true for testing different scenarios:
+
+// Always start from login screen (clears stored tokens on app load)
+const DEV_FORCE_LOGOUT = true;
+
+// Use smart setup: 
+// - Seeded users (9876540001, etc.) → Preserve data
+// - New users (9999999999, etc.) → Reset to fresh state
+const DEV_SMART_SETUP = true;
+
+// Legacy flags (use DEV_SMART_SETUP instead for better behavior)
+const DEV_RESET_PROFILE = false;
+const DEV_RESET_ALL_DATA = false;
+// ============================================================
 
 interface AuthContextType {
   user: User | null;
@@ -33,18 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // 🔧 DEV: Reset test user data for fresh onboarding
-        if (DEV_RESET_TEST_USER) {
-          try {
-            console.log('🔧 DEV: Resetting test user data...');
-            await apiClient.post('/api/auth/dev/reset-test-user');
-            console.log('✅ DEV: Test user reset complete');
-          } catch (error) {
-            console.log('⚠️ DEV: Could not reset test user (may not exist yet)');
-          }
-        }
-
-        // 🔧 DEV: Force logout for testing
+        // 🔧 DEV: Force logout - always start from login screen
         if (DEV_FORCE_LOGOUT) {
           console.log('🔧 DEV: Forcing logout for testing...');
           try {
@@ -105,18 +107,60 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     mutationFn: async ({ phone, otp }) => {
       console.log('🔑 verifyOTPMutation.mutationFn called');
       
-      // 🔧 DEV: Reset test user before verifying OTP to ensure fresh state
-      if (DEV_RESET_TEST_USER && phone === '9999999999') {
+      const response = await authService.verifyOTP(phone, otp);
+      
+      // 🔧 DEV: Smart setup based on user type
+      // - Seeded users (9876540001, etc.) → Preserve data
+      // - New users (9999999999, etc.) → Reset to fresh state
+      if (DEV_SMART_SETUP) {
         try {
-          console.log('🔧 DEV: Resetting test user before login...');
-          await apiClient.post('/api/auth/dev/reset-test-user');
-          console.log('✅ DEV: Test user reset before login');
+          console.log('🔧 DEV: Running smart setup...');
+          const setupResult = await apiClient.post<{ 
+            success: boolean; 
+            action: string; 
+            message: string;
+            needsReseed?: boolean;
+          }>('/api/auth/dev/smart-setup');
+          
+          console.log(`✅ DEV: Smart setup result: ${setupResult.action} - ${setupResult.message}`);
+          
+          // If it's a new user reset, update profileCompleted
+          if (setupResult.action === 'new_user_reset') {
+            response.data.user.profileCompleted = false;
+          }
+          // If seeded user, ensure profileCompleted is true
+          if (setupResult.action === 'seeded_user_preserved') {
+            response.data.user.profileCompleted = true;
+          }
         } catch (error) {
-          console.log('⚠️ DEV: Could not reset test user before login');
+          console.log('⚠️ DEV: Smart setup failed:', error);
         }
       }
       
-      return authService.verifyOTP(phone, otp);
+      // 🔧 DEV: Legacy - Reset user profile after login to show onboarding again
+      if (DEV_RESET_PROFILE && !DEV_SMART_SETUP) {
+        try {
+          console.log('🔧 DEV: Resetting user profile for fresh onboarding...');
+          await apiClient.post('/api/auth/dev/reset-profile');
+          response.data.user.profileCompleted = false;
+          console.log('✅ DEV: Profile reset - will show onboarding');
+        } catch (error) {
+          console.log('⚠️ DEV: Could not reset profile:', error);
+        }
+      }
+      
+      // 🔧 DEV: Legacy - Reset all user data (swipes, matches, etc.)
+      if (DEV_RESET_ALL_DATA && !DEV_SMART_SETUP) {
+        try {
+          console.log('🔧 DEV: Resetting all user data...');
+          await apiClient.post('/api/auth/dev/reset-all-data');
+          console.log('✅ DEV: All data reset complete');
+        } catch (error) {
+          console.log('⚠️ DEV: Could not reset all data:', error);
+        }
+      }
+      
+      return response;
     },
     onSuccess: (data) => {
       console.log('🔑 verifyOTPMutation.onSuccess - user data:', JSON.stringify(data.data.user, null, 2));
