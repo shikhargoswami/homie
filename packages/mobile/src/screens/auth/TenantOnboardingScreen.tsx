@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
+import { PlaceDetails } from '../../services/places.service';
 
 interface TenantPreferences {
   searchType: 'full_home' | 'room_sharing';
@@ -25,6 +27,8 @@ interface TenantPreferences {
   employmentStatus: 'employed' | 'self_employed' | 'student' | 'other';
   // New: Work & Lifestyle preferences
   workLocation?: string;
+  workLocationLat?: number;
+  workLocationLng?: number;
   workMode?: 'office' | 'hybrid' | 'remote' | 'student';
   lifestylePrefs?: string[];
   // Full home specific
@@ -130,8 +134,8 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
   
   // Step 2: Work Details (NEW)
   const [workLocation, setWorkLocation] = useState('');
+  const [workLocationCoords, setWorkLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [workMode, setWorkMode] = useState<'office' | 'hybrid' | 'remote' | 'student'>('office');
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   
   // Step 3: Lifestyle Preferences (NEW)
   const [lifestylePrefs, setLifestylePrefs] = useState<string[]>([]);
@@ -250,6 +254,8 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
       employmentStatus,
       // New fields
       workLocation: workLocation.trim(),
+      workLocationLat: workLocationCoords?.lat,
+      workLocationLng: workLocationCoords?.lng,
       workMode,
       lifestylePrefs,
     };
@@ -338,10 +344,13 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
     return `₹${(value / 1000).toFixed(0)}K`;
   };
 
-  // Helper for filtering work locations
-  const filteredWorkLocations = POPULAR_WORK_LOCATIONS.filter(loc =>
-    loc.toLowerCase().includes(workLocation.toLowerCase())
-  );
+  // Helper for filtering work locations - removed, now using Google Places
+
+  // Handler for place selection
+  const handleWorkLocationSelect = (place: PlaceDetails, displayText: string) => {
+    setWorkLocation(displayText);
+    setWorkLocationCoords(place.location);
+  };
 
   // NEW Step 2: Work Details
   const renderWorkDetailsStep = () => (
@@ -380,75 +389,21 @@ export const TenantOnboardingScreen: React.FC<Props> = ({
         ))}
       </View>
 
-      {/* Location Input (if not remote) */}
+      {/* Location Input (if not remote) - Now using Google Places */}
       {workMode !== 'remote' && (
         <View style={styles.workLocationSection}>
-          <Text style={styles.inputLabel}>
-            {workMode === 'student' ? 'College/University Location' : 'Office Location'}
-          </Text>
-          <View style={styles.locationInputContainer}>
-            <Ionicons name="location" size={20} color="#6b7280" style={styles.locationIcon} />
-            <TextInput
-              style={styles.locationInput}
-              placeholder="Search for your office/college location"
-              value={workLocation}
-              onChangeText={(text) => {
-                setWorkLocation(text);
-                setShowLocationSuggestions(text.length > 0);
-              }}
-              onFocus={() => setShowLocationSuggestions(workLocation.length > 0)}
-            />
-          </View>
-
-          {/* Location Suggestions */}
-          {showLocationSuggestions && filteredWorkLocations.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              {filteredWorkLocations.slice(0, 5).map((location) => (
-                <TouchableOpacity
-                  key={location}
-                  style={styles.suggestionItem}
-                  onPress={() => {
-                    setWorkLocation(location);
-                    setShowLocationSuggestions(false);
-                  }}
-                >
-                  <Ionicons name="location-outline" size={16} color="#6b7280" />
-                  <Text style={styles.suggestionText}>{location}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Quick Select */}
-          <View style={styles.quickSelectContainer}>
-            <Text style={styles.quickSelectLabel}>Popular areas:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.quickSelectRow}>
-                {POPULAR_WORK_LOCATIONS.slice(0, 5).map((location) => (
-                  <TouchableOpacity
-                    key={location}
-                    style={[
-                      styles.quickSelectChip,
-                      workLocation === location && styles.quickSelectChipSelected,
-                    ]}
-                    onPress={() => {
-                      setWorkLocation(location);
-                      setShowLocationSuggestions(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.quickSelectText,
-                        workLocation === location && styles.quickSelectTextSelected,
-                      ]}
-                    >
-                      {location}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
+          <LocationAutocomplete
+            value={workLocation}
+            onPlaceSelect={handleWorkLocationSelect}
+            onChangeText={setWorkLocation}
+            label={workMode === 'student' ? 'College/University Location' : 'Office Location'}
+            placeholder="Search for your office/college location"
+            types="establishment"
+            biasLocation={{ lat: 12.9716, lng: 77.5946 }} // Bangalore center
+            biasRadius={50000}
+            quickSelectOptions={POPULAR_WORK_LOCATIONS}
+            testID="work-location-input"
+          />
         </View>
       )}
 

@@ -13,6 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { PropertyWizardHeader } from '../../components/property/PropertyWizardHeader';
+import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
+import { PlaceDetails, extractAddressComponents } from '../../services/places.service';
 import { 
   useAddProperty, 
   PROPERTY_TYPES, 
@@ -172,17 +174,32 @@ export const AddPropertyStep1Screen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
 
-        {/* Full Address */}
+        {/* Full Address with Google Places Autocomplete */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Full Address</Text>
-          <TextInput
-            style={[styles.input, styles.addressInput]}
+          <LocationAutocomplete
             value={basicInfo.address}
+            onPlaceSelect={(place: PlaceDetails, displayText: string) => {
+              // Extract address components
+              const components = extractAddressComponents(place);
+              
+              updateBasicInfo({
+                address: place.formattedAddress,
+                neighborhood: components.neighborhood || components.city || '',
+                city: components.city || 'Bangalore',
+                pincode: components.postalCode || '',
+                latitude: place.location.lat,
+                longitude: place.location.lng,
+              });
+            }}
             onChangeText={(v) => updateBasicInfo({ address: v })}
-            placeholder="123, 5th Cross, Building Name"
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={2}
+            label="Full Address"
+            placeholder="Search for property address"
+            types="geocode"
+            biasLocation={{ lat: 12.9716, lng: 77.5946 }} // Bangalore center
+            biasRadius={50000}
+            showCurrentLocation={true}
+            onCurrentLocationPress={handleUseCurrentLocation}
+            testID="property-address-input"
           />
         </View>
 
