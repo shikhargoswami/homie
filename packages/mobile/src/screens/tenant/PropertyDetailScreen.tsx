@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Dimensions,
   Linking,
   Animated,
+  FlatList,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '@services/matching.service';
@@ -91,6 +94,7 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [expandedSection, setExpandedSection] = useState<SectionId | null>('propertyDetails');
   const photos = property.photos || [];
+  const imageListRef = useRef<FlatList>(null);
 
   // Toggle section - if clicking same section, collapse it; otherwise expand new one
   const toggleSection = (sectionId: SectionId) => {
@@ -111,17 +115,25 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
     alert('Schedule visit feature coming soon!');
   };
 
-  const nextImage = () => {
-    if (currentImageIndex < photos.length - 1) {
-      setCurrentImageIndex(currentImageIndex + 1);
+  // Handle swipe scroll to update current image index
+  const onScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const newIndex = Math.round(offsetX / SCREEN_WIDTH);
+    if (newIndex !== currentImageIndex && newIndex >= 0 && newIndex < photos.length) {
+      setCurrentImageIndex(newIndex);
     }
-  };
+  }, [currentImageIndex, photos.length]);
 
-  const prevImage = () => {
-    if (currentImageIndex > 0) {
-      setCurrentImageIndex(currentImageIndex - 1);
-    }
-  };
+  // Render single photo item for FlatList
+  const renderPhotoItem = useCallback(({ item }: { item: string }) => (
+    <Image source={{ uri: item }} style={styles.mainImage} resizeMode="cover" />
+  ), []);
+
+  // Handle indicator tap to jump to specific image
+  const scrollToImage = useCallback((index: number) => {
+    imageListRef.current?.scrollToIndex({ index, animated: true });
+    setCurrentImageIndex(index);
+  }, []);
 
   // Helper to get noise level description
   const getNoiseLevelDesc = (db: number | undefined): string => {
@@ -147,33 +159,45 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Image Carousel */}
+        {/* Image Carousel with Swipe */}
         <View style={styles.imageContainer}>
           {photos.length > 0 ? (
             <>
-              <Image source={{ uri: photos[currentImageIndex] }} style={styles.mainImage} />
-              {/* Image Navigation */}
+              <FlatList
+                ref={imageListRef}
+                data={photos}
+                renderItem={renderPhotoItem}
+                keyExtractor={(item, index) => `photo-${index}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onScrollEnd}
+                getItemLayout={(_, index) => ({
+                  length: SCREEN_WIDTH,
+                  offset: SCREEN_WIDTH * index,
+                  index,
+                })}
+                initialScrollIndex={0}
+                bounces={false}
+              />
+              {/* Image Indicators */}
               {photos.length > 1 && (
-                <>
-                  <TouchableOpacity style={[styles.imageNav, styles.imageNavLeft]} onPress={prevImage}>
-                    <Ionicons name="chevron-back" size={24} color="#fff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.imageNav, styles.imageNavRight]} onPress={nextImage}>
-                    <Ionicons name="chevron-forward" size={24} color="#fff" />
-                  </TouchableOpacity>
-                  {/* Image Indicators */}
-                  <View style={styles.imageIndicators}>
-                    {photos.map((_, idx) => (
+                <View style={styles.imageIndicators}>
+                  {photos.map((_, idx) => (
+                    <TouchableOpacity 
+                      key={idx}
+                      onPress={() => scrollToImage(idx)}
+                      hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}
+                    >
                       <View 
-                        key={idx} 
                         style={[
                           styles.imageIndicator,
                           idx === currentImageIndex && styles.imageIndicatorActive
                         ]} 
                       />
-                    ))}
-                  </View>
-                </>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               )}
             </>
           ) : (
@@ -617,23 +641,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#999',
     fontSize: 14,
-  },
-  imageNav: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imageNavLeft: {
-    left: 16,
-  },
-  imageNavRight: {
-    right: 16,
   },
   imageIndicators: {
     position: 'absolute',

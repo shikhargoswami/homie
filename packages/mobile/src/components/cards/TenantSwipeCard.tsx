@@ -17,31 +17,17 @@ import {
   formatBudgetRange,
 } from '../../contexts/LandlordSwipeContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
- * TenantSwipeCard - Simplified Swipe Card for Landlords
+ * TenantSwipeCard - Redesigned for Better UI
  * 
- * Design Philosophy:
- * - Show only essential info for quick decision making
- * - Match tenant photo as full background
- * - Key info: Name, Age, Occupation, Budget, Match Score
- * - Single tap opens detailed view
- * 
- * Key Info Shown:
- * 1. Photo (full background)
- * 2. Match Score Badge
- * 3. Name + Age
- * 4. Occupation + Company
- * 5. Budget Range
- * 6. Verified badge (if any verifications)
- * 7. Rental History Rating (star if available)
- * 
- * Details shown on tap (TenantDetailModal):
- * - Income, Move-in date, Lease preference
- * - Family composition, Current location
- * - All lifestyle tags, All verifications
- * - Interest message, Full rental history
+ * Design Improvements:
+ * - Content positioned higher to avoid button overlap
+ * - Cleaner card layout with better visual hierarchy
+ * - Compact info chips for key details
+ * - Property interest shown as subtle footer
+ * - Action buttons area clearly separated
  */
 
 export interface TenantSwipeCardProps {
@@ -110,90 +96,93 @@ export const TenantSwipeCard: React.FC<TenantSwipeCardProps> = ({
         resizeMode="cover"
       />
 
-      {/* Content Overlay */}
-      <View style={[StyleSheet.absoluteFill, styles.overlay]}>
-        {/* Match Score Badge - Top Right */}
-        <View style={styles.matchBadge}>
-          <Text style={styles.matchScore}>{tenant.matchScore}%</Text>
-          <Text style={styles.matchLabel}>Match</Text>
-        </View>
+      {/* Gradient Overlay - Center band for text readability */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.2)']}
+        locations={[0, 0.35, 0.65, 1]}
+        style={styles.gradient}
+      />
 
-        {/* Pending Count - Top Left */}
+      {/* Top Badges Row */}
+      <View style={styles.topBadgesRow}>
+        {/* Pending Count - Left */}
         <View style={styles.pendingBadge}>
           <Text style={styles.pendingText}>{totalPending} interested</Text>
         </View>
 
-        {/* Verified Badge - Below match badge */}
-        {verification.count > 0 && (
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="shield-checkmark" size={14} color="#fff" />
-            <Text style={styles.verifiedText}>{verification.label}</Text>
-          </View>
-        )}
-
-        {/* Tap for Details Hint */}
-        <View style={styles.tapHint}>
-          <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.8)" />
+        {/* Tap Hint - Center */}
+        <TouchableOpacity style={styles.tapHint} onPress={onPress}>
+          <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.9)" />
           <Text style={styles.tapHintText}>Tap for details</Text>
+        </TouchableOpacity>
+
+        {/* Match Score - Right */}
+        <View style={styles.matchBadge}>
+          <Text style={styles.matchScore}>{tenant.matchScore}%</Text>
+          <Text style={styles.matchLabel}>MATCH</Text>
+        </View>
+      </View>
+
+      {/* Verified Badge - Below match score */}
+      {verification.count > 0 && (
+        <View style={styles.verifiedBadge}>
+          <Ionicons name="shield-checkmark" size={14} color="#fff" />
+          <Text style={styles.verifiedText}>{verification.label}</Text>
+        </View>
+      )}
+
+      {/* Main Content - Centered vertically for better readability */}
+      <View style={styles.cardContent}>
+        {/* Name + Age Row */}
+        <View style={styles.nameContainer}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={1}>{tenant.name}</Text>
+            {tenant.age && <Text style={styles.age}>, {tenant.age}</Text>}
+          </View>
+          {tenant.isCouple && (
+            <View style={styles.coupleTag}>
+              <Ionicons name="people" size={12} color="#fff" />
+              <Text style={styles.coupleText}>Couple</Text>
+            </View>
+          )}
         </View>
 
-        {/* Gradient Overlay */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
-          locations={[0, 0.4, 1]}
-          style={styles.gradient}
-        />
-
-        {/* Main Content - Bottom */}
-        <View style={styles.cardContent}>
-          {/* Name + Age + Couple Tag */}
-          <View style={styles.nameContainer}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{tenant.name}</Text>
-              {tenant.age && <Text style={styles.age}>, {tenant.age}</Text>}
-            </View>
-            {tenant.isCouple && (
-              <View style={styles.coupleTag}>
-                <Ionicons name="people" size={12} color="#fff" />
-                <Text style={styles.coupleText}>Couple</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Occupation + Company */}
-          <View style={styles.infoRow}>
-            <Ionicons name="briefcase" size={16} color="#fff" />
-            <Text style={styles.infoText}>
+        {/* Info Cards Row */}
+        <View style={styles.infoCardsRow}>
+          {/* Occupation Card */}
+          <View style={styles.infoCard}>
+            <Ionicons name="briefcase" size={14} color="#a5b4fc" />
+            <Text style={styles.infoCardText} numberOfLines={1}>
               {tenant.occupationType ? formatOccupationType(tenant.occupationType) : 'Professional'}
               {tenant.company ? ` at ${tenant.company}` : ''}
             </Text>
           </View>
 
-          {/* Budget */}
-          <View style={styles.infoRow}>
-            <Ionicons name="wallet" size={16} color="#fff" />
-            <Text style={styles.infoText}>
-              Budget: {formatBudgetRange(tenant.budgetMin, tenant.budgetMax)}/month
+          {/* Budget Card */}
+          <View style={styles.infoCard}>
+            <Ionicons name="wallet" size={14} color="#86efac" />
+            <Text style={styles.infoCardText}>
+              {formatBudgetRange(tenant.budgetMin, tenant.budgetMax)}
             </Text>
           </View>
+        </View>
 
-          {/* Rental History Rating - Key trust signal */}
-          {hasRentalHistory && (
-            <View style={styles.ratingRow}>
-              <Text style={styles.ratingIcon}>⭐</Text>
-              <Text style={styles.ratingText}>
-                {formatRentalRating(tenant.rentalHistory!.rating)}/5 from previous landlord
-              </Text>
-            </View>
-          )}
-
-          {/* Property They're Interested In */}
-          <View style={styles.propertyRow}>
-            <Ionicons name="home-outline" size={14} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.propertyText} numberOfLines={1}>
-              {tenant.property.neighborhood} • ₹{tenant.property.rent.toLocaleString('en-IN')}/mo
+        {/* Rental Rating - If available */}
+        {hasRentalHistory && (
+          <View style={styles.ratingBadge}>
+            <Text style={styles.ratingIcon}>⭐</Text>
+            <Text style={styles.ratingText}>
+              {formatRentalRating(tenant.rentalHistory!.rating)}/5 from previous landlords
             </Text>
           </View>
+        )}
+
+        {/* Property Interest Footer */}
+        <View style={styles.propertyFooter}>
+          <Ionicons name="home" size={14} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.propertyText} numberOfLines={1}>
+            Interested in {tenant.property.neighborhood} • ₹{tenant.property.rent.toLocaleString('en-IN')}/mo
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -203,115 +192,130 @@ export const TenantSwipeCard: React.FC<TenantSwipeCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
   },
   cardImage: {
-    borderRadius: 20,
+    borderRadius: 24,
   },
   loadingContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  overlay: {
-    justifyContent: 'flex-end',
-  },
   gradient: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 20,
+    borderRadius: 24,
   },
   
-  // Badge Styles
-  matchBadge: {
+  // Top Badges Row - Horizontal layout
+  topBadgesRow: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    right: 16,
-    backgroundColor: '#10b981',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 12,
-    borderWidth: 3,
-    borderColor: '#fff',
+    top: Platform.OS === 'ios' ? 50 : 30,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    zIndex: 10,
   },
-  matchScore: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-  matchLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: -2,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
+  
+  // Pending Badge - Left
   pendingBadge: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    left: 16,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    borderRadius: 16,
+    paddingHorizontal: 12,
     paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   pendingText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
+  
+  // Tap Hint - Center
+  tapHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  tapHintText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  
+  // Match Score Badge - Right
+  matchBadge: {
+    backgroundColor: '#10b981',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  matchScore: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  matchLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: -2,
+    letterSpacing: 1,
+  },
+  
+  // Verified Badge - Below match score
   verifiedBadge: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 120 : 100,
-    right: 16,
-    backgroundColor: 'rgba(76, 217, 100, 0.9)',
+    top: Platform.OS === 'ios' ? 110 : 90,
+    right: 12,
+    backgroundColor: 'rgba(34, 197, 94, 0.95)',
     borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   verifiedText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: '#fff',
   },
-  tapHint: {
+  
+  // Main Content Area - Centered vertically in card
+  cardContent: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  tapHintText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    left: 0,
+    right: 0,
+    top: '50%',
+    transform: [{ translateY: -80 }], // Offset to center the content block
+    paddingHorizontal: 16,
+    gap: 8,
   },
   
-  // Content Styles
-  cardContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100, // Space for action buttons
-    paddingTop: 16,
-  },
+  // Name Row
   nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   nameRow: {
     flexDirection: 'row',
@@ -321,82 +325,90 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowColor: 'rgba(0,0,0,0.9)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
   age: {
     fontSize: 24,
     fontWeight: '400',
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.8)',
+    color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.9)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
   coupleTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.8)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     gap: 4,
   },
   coupleText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
   },
   
-  // Info Rows
-  infoRow: {
+  // Info Cards Row - Compact chips
+  infoCardsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 8,
   },
-  infoText: {
-    fontSize: 16,
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  
-  // Rating Row
-  ratingRow: {
+  infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
-    marginBottom: 8,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  infoCardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+    maxWidth: SCREEN_WIDTH * 0.35,
+  },
+  
+  // Rating Badge
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   ratingIcon: {
     fontSize: 14,
   },
   ratingText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fbbf24',
   },
   
-  // Property Row
-  propertyRow: {
+  // Property Footer
+  propertyFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 8,
-    opacity: 0.9,
+    paddingTop: 4,
   },
   propertyText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
   },
 });
 
