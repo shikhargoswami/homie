@@ -16,6 +16,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Section IDs for accordion behavior
+type SectionId = 'propertyDetails' | 'amenities' | 'neighborhood' | 'sunlight' | 'commute' | 'pet' | 'owner';
+
 // Define navigation param list for this screen
 type RootStackParamList = {
   PropertyDetail: { property: Property; isMatched?: boolean };
@@ -24,33 +27,33 @@ type RootStackParamList = {
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetail'>;
 
 /**
- * Expandable Section Component
+ * Expandable Section Component (Accordion)
+ * Only one section can be expanded at a time
  */
 interface ExpandableSectionProps {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   children: React.ReactNode;
-  defaultExpanded?: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
 const ExpandableSection: React.FC<ExpandableSectionProps> = ({ 
   title, 
   icon, 
   children, 
-  defaultExpanded = false 
+  isExpanded,
+  onToggle,
 }) => {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const [animation] = useState(new Animated.Value(defaultExpanded ? 1 : 0));
+  const [animation] = useState(new Animated.Value(isExpanded ? 1 : 0));
 
-  const toggleExpand = () => {
-    const toValue = expanded ? 0 : 1;
+  React.useEffect(() => {
     Animated.timing(animation, {
-      toValue,
+      toValue: isExpanded ? 1 : 0,
       duration: 300,
       useNativeDriver: false,
     }).start();
-    setExpanded(!expanded);
-  };
+  }, [isExpanded]);
 
   const rotateInterpolate = animation.interpolate({
     inputRange: [0, 1],
@@ -59,7 +62,7 @@ const ExpandableSection: React.FC<ExpandableSectionProps> = ({
 
   return (
     <View style={styles.expandableSection}>
-      <TouchableOpacity style={styles.expandableHeader} onPress={toggleExpand}>
+      <TouchableOpacity style={styles.expandableHeader} onPress={onToggle}>
         <View style={styles.expandableTitle}>
           <Ionicons name={icon} size={20} color="#6366f1" />
           <Text style={styles.expandableTitleText}>{title}</Text>
@@ -68,7 +71,7 @@ const ExpandableSection: React.FC<ExpandableSectionProps> = ({
           <Ionicons name="chevron-down" size={20} color="#666" />
         </Animated.View>
       </TouchableOpacity>
-      {expanded && (
+      {isExpanded && (
         <View style={styles.expandableContent}>
           {children}
         </View>
@@ -81,12 +84,18 @@ const ExpandableSection: React.FC<ExpandableSectionProps> = ({
  * Property Detail Screen
  * 
  * Shows full property information when user taps on a card
- * with expandable sections for lifestyle data
+ * with expandable sections for lifestyle data (accordion style)
  */
 export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { property, isMatched = false } = route.params;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [expandedSection, setExpandedSection] = useState<SectionId | null>('propertyDetails');
   const photos = property.photos || [];
+
+  // Toggle section - if clicking same section, collapse it; otherwise expand new one
+  const toggleSection = (sectionId: SectionId) => {
+    setExpandedSection(prev => prev === sectionId ? null : sectionId);
+  };
 
   const handleContactLandlord = () => {
     // For now, just show an alert - in production, this would open chat
@@ -249,10 +258,15 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
           </View>
         </View>
 
-        {/* Expandable Sections */}
+        {/* Expandable Sections (Accordion - only one open at a time) */}
         
         {/* Property Details */}
-        <ExpandableSection title="Property Details" icon="home-outline" defaultExpanded={true}>
+        <ExpandableSection 
+          title="Property Details" 
+          icon="home-outline" 
+          isExpanded={expandedSection === 'propertyDetails'}
+          onToggle={() => toggleSection('propertyDetails')}
+        >
           <View style={styles.detailsGrid}>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Rent</Text>
@@ -278,7 +292,12 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
         </ExpandableSection>
 
         {/* Amenities */}
-        <ExpandableSection title="Amenities" icon="grid-outline">
+        <ExpandableSection 
+          title="Amenities" 
+          icon="grid-outline"
+          isExpanded={expandedSection === 'amenities'}
+          onToggle={() => toggleSection('amenities')}
+        >
           <View style={styles.amenitiesGrid}>
             {(property.amenities || []).map((amenity, index) => (
               <View key={index} style={styles.amenityItem}>
@@ -293,7 +312,12 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
         </ExpandableSection>
 
         {/* Neighborhood Info */}
-        <ExpandableSection title="Neighborhood Info" icon="map-outline">
+        <ExpandableSection 
+          title="Neighborhood Info" 
+          icon="map-outline"
+          isExpanded={expandedSection === 'neighborhood'}
+          onToggle={() => toggleSection('neighborhood')}
+        >
           {property.neighborhood_pois ? (
             <View style={styles.neighborhoodGrid}>
               {property.neighborhood_pois.metro_distance_m && (
@@ -351,7 +375,12 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
         </ExpandableSection>
 
         {/* Sunlight & Sound */}
-        <ExpandableSection title="Sunlight & Sound" icon="sunny-outline">
+        <ExpandableSection 
+          title="Sunlight & Sound" 
+          icon="sunny-outline"
+          isExpanded={expandedSection === 'sunlight'}
+          onToggle={() => toggleSection('sunlight')}
+        >
           <View style={styles.lifestyleGrid}>
             {/* Sunlight Section */}
             <View style={styles.lifestyleSection}>
@@ -417,7 +446,12 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
         </ExpandableSection>
 
         {/* Commute Times */}
-        <ExpandableSection title="Commute Times" icon="time-outline">
+        <ExpandableSection 
+          title="Commute Times" 
+          icon="time-outline"
+          isExpanded={expandedSection === 'commute'}
+          onToggle={() => toggleSection('commute')}
+        >
           {property.commute_matrix && Object.keys(property.commute_matrix).length > 0 ? (
             <View style={styles.commuteGrid}>
               {Object.entries(property.commute_matrix).map(([location, minutes], idx) => (
@@ -449,7 +483,12 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
 
         {/* Pet Policy */}
         {property.pet_details && (
-          <ExpandableSection title="Pet Policy" icon="paw-outline">
+          <ExpandableSection 
+            title="Pet Policy" 
+            icon="paw-outline"
+            isExpanded={expandedSection === 'pet'}
+            onToggle={() => toggleSection('pet')}
+          >
             <View style={styles.petGrid}>
               <View style={styles.petItem}>
                 <Text style={styles.petEmoji}>🐕</Text>
@@ -483,7 +522,12 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
         )}
 
         {/* Owner Details */}
-        <ExpandableSection title="Owner Details" icon="person-outline">
+        <ExpandableSection 
+          title="Owner Details" 
+          icon="person-outline"
+          isExpanded={expandedSection === 'owner'}
+          onToggle={() => toggleSection('owner')}
+        >
           <View style={styles.landlordCard}>
             <View style={styles.landlordAvatar}>
               <Ionicons name="person" size={32} color="#fff" />
