@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useMutualMatches } from '@hooks/useMatching';
 import { useChat } from '../../hooks/useChat';
+import { useMatchNotification } from '../../contexts/MatchNotificationContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Props {
   navigation: any;
@@ -46,6 +48,14 @@ export const MatchesScreen: React.FC<Props> = ({ navigation }) => {
   const { data: matches, isLoading, refetch, isRefetching } = useMutualMatches();
   const { startConversation } = useChat();
   const [startingChat, setStartingChat] = useState<string | null>(null);
+  const { clearMatchCount } = useMatchNotification();
+
+  // Clear match badge count when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      clearMatchCount();
+    }, [clearMatchCount])
+  );
 
   const handleMatchPress = (match: Match) => {
     // Navigate to chat or property detail

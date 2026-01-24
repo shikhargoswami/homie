@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Alert, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,6 +10,9 @@ import { Property } from '../services/matching.service';
 import { apiClient } from '../services/api';
 import { LandlordProvider } from '../contexts/LandlordContext';
 import { LandlordSwipeProvider } from '../contexts/LandlordSwipeContext';
+import { MatchNotificationProvider, useMatchNotification } from '../contexts/MatchNotificationContext';
+import { AnimatedTabIcon, MatchTabIcon, MessageTabIcon } from '../components/AnimatedTabIcon';
+import { MatchCelebrationModal } from '../components/MatchCelebrationModal';
 
 // Auth screens
 import { PhoneInputScreen } from '../screens/auth/PhoneInputScreen';
@@ -230,23 +233,64 @@ const AuthStack = ({
  * Main App Navigator (Bottom Tabs for Tenants)
  */
 const AppTabs = () => {
+  const { 
+    newMatchCount, 
+    matchBadgeScale, 
+    matchBadgeRotate,
+    newMessageCount,
+    messageBadgeScale,
+    getTabPulseAnim,
+  } = useMatchNotification();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-
+          if (route.name === 'Matches') {
+            return (
+              <MatchTabIcon
+                focused={focused}
+                color={color}
+                size={size}
+                badgeCount={newMatchCount}
+                scaleAnim={matchBadgeScale}
+                rotateAnim={matchBadgeRotate}
+                pulseAnim={getTabPulseAnim('Matches')}
+              />
+            );
+          }
+          
+          if (route.name === 'Messages') {
+            return (
+              <MessageTabIcon
+                focused={focused}
+                color={color}
+                size={size}
+                badgeCount={newMessageCount}
+                scaleAnim={messageBadgeScale}
+                pulseAnim={getTabPulseAnim('Messages')}
+              />
+            );
+          }
+          
+          let iconName: keyof typeof Ionicons.glyphMap;
           if (route.name === 'Explore') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'Matches') {
-            iconName = focused ? 'heart' : 'heart-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else {
+            iconName = 'help-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return (
+            <AnimatedTabIcon
+              name={iconName}
+              color={color}
+              size={size}
+              focused={focused}
+              pulseAnim={getTabPulseAnim(route.name)}
+            />
+          );
         },
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#999',
@@ -265,11 +309,33 @@ const AppTabs = () => {
  * Landlord Bottom Tabs Navigator
  */
 const LandlordTabs = () => {
+  const { 
+    newMatchCount, 
+    matchBadgeScale, 
+    matchBadgeRotate,
+    newMessageCount,
+    messageBadgeScale,
+    getTabPulseAnim,
+  } = useMatchNotification();
+
   return (
     <LandlordTab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
+          if (route.name === 'Messages') {
+            return (
+              <MessageTabIcon
+                focused={focused}
+                color={color}
+                size={size}
+                badgeCount={newMessageCount}
+                scaleAnim={messageBadgeScale}
+                pulseAnim={getTabPulseAnim('Messages')}
+              />
+            );
+          }
+          
+          let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === 'Explore') {
             iconName = focused ? 'people' : 'people-outline';
@@ -277,13 +343,26 @@ const LandlordTabs = () => {
             iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'Properties') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else {
+            iconName = 'help-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          // Show badge on Explore for interested tenants
+          const showBadge = route.name === 'Explore' && newMatchCount > 0;
+
+          return (
+            <AnimatedTabIcon
+              name={iconName}
+              color={showBadge ? '#ef4444' : color}
+              size={size}
+              focused={focused}
+              badgeCount={showBadge ? newMatchCount : 0}
+              scaleAnim={matchBadgeScale}
+              pulseAnim={getTabPulseAnim(route.name)}
+            />
+          );
         },
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#999',
@@ -303,16 +382,36 @@ const LandlordTabs = () => {
  * Main App Stack for Tenants (wraps tabs + detail screens)
  */
 const MainAppStack = () => {
+  const { recentMatch, clearRecentMatch } = useMatchNotification();
+  const navigationRef = React.useRef<any>(null);
+
+  const handleChatFromMatch = () => {
+    clearRecentMatch();
+    // Navigate to Matches tab to start chatting
+    navigationRef.current?.navigate('MainTabs', { screen: 'Matches' });
+  };
+
   return (
-    <AppStack.Navigator screenOptions={{ headerShown: false }}>
-      <AppStack.Screen name="MainTabs" component={AppTabs} />
-      <AppStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
-      <AppStack.Screen name="Chat" component={ChatScreen} />
-      <AppStack.Screen name="Preferences" component={PreferencesScreen} />
-      <AppStack.Screen name="EditProfile" component={EditProfileScreen} />
-      <AppStack.Screen name="Viewings" component={ViewingsScreen} />
-      <AppStack.Screen name="ScheduleViewing" component={ScheduleViewingScreen} />
-    </AppStack.Navigator>
+    <>
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen name="MainTabs" component={AppTabs} />
+        <AppStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
+        <AppStack.Screen name="Chat" component={ChatScreen} />
+        <AppStack.Screen name="Preferences" component={PreferencesScreen} />
+        <AppStack.Screen name="EditProfile" component={EditProfileScreen} />
+        <AppStack.Screen name="Viewings" component={ViewingsScreen} />
+        <AppStack.Screen name="ScheduleViewing" component={ScheduleViewingScreen} />
+      </AppStack.Navigator>
+
+      {/* Match Celebration Modal */}
+      <MatchCelebrationModal
+        visible={!!recentMatch}
+        onClose={clearRecentMatch}
+        onChat={handleChatFromMatch}
+        propertyTitle={recentMatch?.propertyTitle || ''}
+        landlordName={recentMatch?.landlordName}
+      />
+    </>
   );
 };
 
@@ -320,30 +419,48 @@ const MainAppStack = () => {
  * Main App Stack for Landlords (wraps tabs + detail screens)
  */
 const MainLandlordStack = () => {
+  const { recentMatch, clearRecentMatch } = useMatchNotification();
+
+  const handleChatFromMatch = () => {
+    clearRecentMatch();
+    // Navigate to Explore tab to see interested tenants
+  };
+
   return (
     <AddPropertyProvider>
-      <LandlordStack.Navigator screenOptions={{ headerShown: false }}>
-        <LandlordStack.Screen name="LandlordTabs" component={LandlordTabs} />
-        {/* Property Wizard Screens */}
-        <LandlordStack.Screen name="AddProperty" component={AddPropertyStep1Screen} />
-        <LandlordStack.Screen name="AddPropertyStep1" component={AddPropertyStep1Screen} />
-        <LandlordStack.Screen name="AddPropertyStep2" component={AddPropertyStep2Screen} />
-        <LandlordStack.Screen name="AddPropertyStep3" component={AddPropertyStep3Screen} />
-        <LandlordStack.Screen name="AddPropertyStep4" component={AddPropertyStep4Screen} />
-        <LandlordStack.Screen name="EditProperty" component={AddPropertyStep1Screen} />
-        <LandlordStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
-        <LandlordStack.Screen name="Chat" component={ChatScreen} />
-        <LandlordStack.Screen name="Viewings" component={ViewingsScreen} />
-        <LandlordStack.Screen 
-          name="LandlordMatches" 
-          component={LandlordMatchesScreen}
-          options={{ 
-            headerShown: true, 
-            title: 'Tenant Matches',
-            headerBackTitle: 'Back',
-          }} 
+      <>
+        <LandlordStack.Navigator screenOptions={{ headerShown: false }}>
+          <LandlordStack.Screen name="LandlordTabs" component={LandlordTabs} />
+          {/* Property Wizard Screens */}
+          <LandlordStack.Screen name="AddProperty" component={AddPropertyStep1Screen} />
+          <LandlordStack.Screen name="AddPropertyStep1" component={AddPropertyStep1Screen} />
+          <LandlordStack.Screen name="AddPropertyStep2" component={AddPropertyStep2Screen} />
+          <LandlordStack.Screen name="AddPropertyStep3" component={AddPropertyStep3Screen} />
+          <LandlordStack.Screen name="AddPropertyStep4" component={AddPropertyStep4Screen} />
+          <LandlordStack.Screen name="EditProperty" component={AddPropertyStep1Screen} />
+          <LandlordStack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
+          <LandlordStack.Screen name="Chat" component={ChatScreen} />
+          <LandlordStack.Screen name="Viewings" component={ViewingsScreen} />
+          <LandlordStack.Screen 
+            name="LandlordMatches" 
+            component={LandlordMatchesScreen}
+            options={{ 
+              headerShown: true, 
+              title: 'Tenant Matches',
+              headerBackTitle: 'Back',
+            }} 
+          />
+        </LandlordStack.Navigator>
+
+        {/* Match Celebration Modal for Landlords */}
+        <MatchCelebrationModal
+          visible={!!recentMatch}
+          onClose={clearRecentMatch}
+          onChat={handleChatFromMatch}
+          propertyTitle={recentMatch?.propertyTitle || ''}
+          landlordName={recentMatch?.landlordName}
         />
-      </LandlordStack.Navigator>
+      </>
     </AddPropertyProvider>
   );
 };
@@ -374,14 +491,20 @@ export const RootNavigator = () => {
   const renderMainApp = () => {
     if (user?.role === 'landlord') {
       return (
-        <LandlordProvider>
-          <LandlordSwipeProvider>
-            <MainLandlordStack />
-          </LandlordSwipeProvider>
-        </LandlordProvider>
+        <MatchNotificationProvider>
+          <LandlordProvider>
+            <LandlordSwipeProvider>
+              <MainLandlordStack />
+            </LandlordSwipeProvider>
+          </LandlordProvider>
+        </MatchNotificationProvider>
       );
     }
-    return <MainAppStack />;
+    return (
+      <MatchNotificationProvider>
+        <MainAppStack />
+      </MatchNotificationProvider>
+    );
   };
 
   // Check if user needs to complete onboarding

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useChat, Conversation } from '../../hooks/useChat';
+import { useMatchNotification } from '../../contexts/MatchNotificationContext';
 
 export default function ChatListScreen() {
   const navigation = useNavigation<any>();
@@ -25,6 +26,7 @@ export default function ChatListScreen() {
   } = useChat();
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { clearMessageCount } = useMatchNotification();
 
   const isLoading = initialLoading && contextLoading;
 
@@ -35,7 +37,9 @@ export default function ChatListScreen() {
     useCallback(() => {
       console.log('[ChatListScreen] Screen focused - loading conversations');
       loadConversations();
-    }, [])
+      // Clear message badge count
+      clearMessageCount();
+    }, [clearMessageCount])
   );
 
   const loadConversations = async () => {

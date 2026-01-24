@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
+import { appEvents, AppEventTypes } from '../utils/appEvents';
 
 // Get API URL from environment or use fallback
 const API_BASE_URL = ENV_API_BASE_URL || 'http://192.168.0.109:3000';
@@ -153,6 +154,12 @@ export function ChatProvider({ children }: ChatProviderProps) {
                 : c
             )
           );
+          
+          // Emit event for tab bar badge animation
+          appEvents.emit(AppEventTypes.NEW_MESSAGE, {
+            conversationId: data.conversation_id,
+            message: data.message,
+          });
         }
       });
 

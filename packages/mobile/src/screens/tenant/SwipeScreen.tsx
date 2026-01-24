@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRecommendations, useSwipe, useMatchStats } from '@hooks/useMatching';
 import { usePreferences, findMatchingBudgetOption } from '@hooks/usePreferences';
 import { Property } from '@services/matching.service';
+import { useMatchNotification } from '../../contexts/MatchNotificationContext';
 
 
 
@@ -89,6 +90,7 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
   const { mutate: swipe, isPending: isSwiping } = useSwipe();
   const { data: stats } = useMatchStats();
   const { data: preferences, isLoading: isLoadingPreferences } = usePreferences();
+  const { notifyNewMatch } = useMatchNotification();
 
   // Initialize filters from user preferences when they load
   useEffect(() => {
@@ -310,14 +312,12 @@ export const SwipeScreen: React.FC<Props> = ({ navigation }) => {
       {
         onSuccess: (data) => {
           if (data.data.isMutualMatch) {
-            Alert.alert(
-              '🎉 It\'s a Match!',
-              'You and the landlord are interested. Start chatting now!',
-              [
-                { text: 'Later', style: 'cancel' },
-                { text: 'Chat Now', onPress: () => navigation.navigate('Matches') },
-              ]
-            );
+            // Trigger the celebration modal and badge animation
+            notifyNewMatch({
+              id: property.id,
+              propertyTitle: property.title || property.address || 'New Property',
+              landlordName: data.data.landlordName || undefined,
+            });
           }
         },
         onError: (error: any) => {
