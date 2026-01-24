@@ -128,15 +128,26 @@ const SOCIAL_MEDIA_PATTERNS = [
   // Discord
   /\b(discord|disc0rd|d1sc0rd)\s*[:\-]?\s*[A-Za-z0-9#._]+/gi,
   
-  // Generic social handles
-  /\b@[A-Za-z0-9._]{3,30}\b/g,
-  
   // Generic "my handle/username is" patterns
   /\b(my|mera)\s*(handle|username|id|profile|account)\s*(is|hai|:)?\s*@?[A-Za-z0-9._]+/gi,
   
   // "DM me" generic
   /\b(dm|direct\s*message|slide\s*into)\s*(me|my)?\s*(dms|dm)?\b/gi,
+  
+  // "Find me on" / "Search for" patterns
+  /\b(find|search|look)\s*(for)?\s*(me|us)\s*(on|@|as)\b/gi,
+  /\b(i'?m|i\s+am)\s*(on|@)\s*[A-Za-z0-9._]+/gi,
+  
+  // Username sharing patterns
+  /\b(username|user\s*name|handle|id)\s*[:\-]?\s*@?[A-Za-z0-9._]{3,}/gi,
+  /\b(my|mera|apna)\s*@[A-Za-z0-9._]+/gi,
 ];
+
+// ============================================
+// @ HANDLE PATTERNS (Dedicated - High Priority)
+// ============================================
+// These are checked separately with special logic
+const AT_HANDLE_PATTERN = /(^|[\s\.,!?:;\-])@([A-Za-z0-9._]{2,30})(?=$|[\s\.,!?:;\-])/g;
 
 // ============================================
 // URL/WEBSITE PATTERNS (New)
@@ -275,7 +286,13 @@ class ChatAntiBypassService {
     const normalizedMessage = this.normalizeMessage(message);
     const lowerMessage = message.toLowerCase();
 
-    // Check for spaced-out text first (highest priority bypass attempt)
+    // Check for @ handles FIRST (highest priority - direct username sharing)
+    const atHandleResult = this.detectAtHandle(message);
+    if (atHandleResult.isViolation) {
+      return atHandleResult;
+    }
+
+    // Check for spaced-out text (high priority bypass attempt)
     const spacedResult = this.detectSpacedText(message);
     if (spacedResult.found) {
       const violationType = this.getViolationTypeForWord(spacedResult.word!);
@@ -351,6 +368,79 @@ class ChatAntiBypassService {
       [ChatViolationType.URL]: '⚠️ External links are not allowed in chat for safety reasons.',
     };
     return warnings[type] || '⚠️ This message contains restricted content.';
+  }
+
+  /**
+   * Detect @ handles (social media usernames)
+   * This is a dedicated high-priority check for any @username pattern
+   */
+  private detectAtHandle(message: string): DetectionResult {
+    // Comprehensive list of allowed @ mentions (property/chat context only)
+    const allowedHandles = new Set([
+      // Property related
+      'home', 'property', 'flat', 'room', 'rent', 'house', 'apartment', 'place',
+      'bedroom', 'bathroom', 'kitchen', 'balcony', 'parking', 'floor', 'building',
+      // Time related
+      'morning', 'evening', 'night', 'today', 'tomorrow', 'time', 'date', 'pm', 'am',
+      'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+      // Common chat words
+      'thanks', 'please', 'hello', 'hi', 'ok', 'okay', 'yes', 'no', 'sorry', 'sure',
+      // Property terms
+      'price', 'cost', 'deposit', 'month', 'year', 'sqft', 'bhk',
+      // Locations (generic)
+      'location', 'area', 'nearby', 'metro', 'station',
+      // Other common words that might be @mentioned
+      'all', 'everyone', 'here', 'there', 'work', 'office',
+    ]);
+
+    // Pattern to find @username anywhere in the message
+    // Matches: @username, "check @username", "@username_123", etc.
+    const atPattern = /(?:^|[^A-Za-z0-9])@([A-Za-z0-9][A-Za-z0-9._]{1,29})(?:[^A-Za-z0-9._]|$)/gi;
+    
+    let match;
+    while ((match = atPattern.exec(message)) !== null) {
+      const handle = match[1].toLowerCase();
+      
+      // Skip if it's in the allowed list
+      if (allowedHandles.has(handle)) {
+        continue;
+      }
+      
+      // Skip if it looks like a common word (all lowercase, no numbers/underscores, short)
+      if (handle.length <= 4 && /^[a-z]+$/.test(handle)) {
+        // Check if it's a dictionary word that might be contextually used
+        const commonShortWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'own', 'say', 'she', 'too', 'use'];
+        if (commonShortWords.includes(handle)) {
+          continue;
+        }
+      }
+      
+      // This looks like a social media handle - BLOCK IT
+      return {
+        isViolation: true,
+        violationType: ChatViolationType.SOCIAL_MEDIA,
+        detectedContent: `@${match[1]}`,
+        sanitizedMessage: message.replace(new RegExp(`@${match[1]}`, 'gi'), '[HANDLE REMOVED]'),
+        warningMessage: '⚠️ Social media handles (@username) are not allowed. Please keep conversations on the platform for your safety.',
+      };
+    }
+
+    // Also check for @ followed by a handle without the @ (trying to bypass)
+    // e.g., "find me at username" or "my insta username_123"
+    const handleWithoutAtPattern = /\b(find\s+me\s+at|my\s+(?:insta|ig|twitter|snap|fb|tg|username|handle|id)\s*(?:is)?)\s*:?\s*([A-Za-z0-9._]{3,30})\b/gi;
+    
+    while ((match = handleWithoutAtPattern.exec(message)) !== null) {
+      const handle = match[2];
+      return {
+        isViolation: true,
+        violationType: ChatViolationType.SOCIAL_MEDIA,
+        detectedContent: handle,
+        sanitizedMessage: message.replace(handle, '[HANDLE REMOVED]'),
+        warningMessage: '⚠️ Social media handles are not allowed. Please keep conversations on the platform.',
+      };
+    }
+
+    return { isViolation: false };
   }
 
   /**
