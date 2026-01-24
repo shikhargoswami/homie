@@ -37,18 +37,30 @@ New User Flow: 9999999999 (OTP: 123456)
 
 "Hi, I'm [Your Name], founder of Homie.
 
-India has a massive rental housing crisis. There are 12 million rental 
-transactions happening every year in urban India, representing ₹4 lakh 
-crore in annual rent value. Yet the experience is broken.
+Let me tell you about my last rental search. I went on NoBroker, 
+saw 500 listings for Koramangala. Sounds great, right?
 
-Today, finding a rental home means:
-- Paying ₹30-50,000 to brokers in commission
-- Visiting 15-20 properties over 3-4 weekends
-- Trusting strangers with ₹50,000-2,00,000 in security deposits
-- Signing agreements with clauses you don't understand
-- And praying your landlord doesn't unfairly deduct from your deposit
+Then I spent the next 2 weeks making 40+ phone calls asking the 
+SAME questions: 'Is parking included?' 'Which floor?' 'Is it 
+still available?' 'Can bachelors apply?'
 
-Homie fixes all of this. Let me show you what we've built."
+Landlords were equally frustrated - one told me he gets 50 calls 
+a DAY asking 'what's the rent?' when it's RIGHT THERE in the listing.
+
+This is the problem with NoBroker and every rental platform:
+More listings ≠ better experience. 
+It just means more noise, more calls, more wasted time.
+
+Homie takes the opposite approach. We go HYPER-LOCAL.
+
+Instead of 50,000 listings across Bengaluru with garbage data, 
+we have 100 VERIFIED properties in Koramangala with COMPLETE 
+information. Every photo, every amenity, every house rule - upfront.
+
+No calls needed. No information hunting. 
+You swipe, you match, you chat about the DEAL - not the basics.
+
+Let me show you what we've built."
 ```
 
 ---
@@ -265,19 +277,43 @@ not subscription-based."
 "Let me address the elephant in the room - NoBroker.
 
 NoBroker raised $210 million and is valued at $700 million. 
-They've proven the market exists. But they have a fundamental problem.
+They've proven the market exists. But they have THREE fundamental problems.
 
-NOBROKER'S FLAW:
+NOBROKER PROBLEM #1 - THE CALL CHAOS:
+- 50,000 listings with incomplete information
+- Tenants make 30-40 calls just to gather basic info
+- Landlords get spammed with 'what's the rent?' calls
+- Both sides frustrated before they even meet
+
+NOBROKER PROBLEM #2 - SPRAY AND PRAY:
+- They spread thin across entire cities
+- 50 properties in each of 100 neighborhoods
+- No critical mass anywhere
+- A tenant in Koramangala sees listings from Whitefield
+
+NOBROKER PROBLEM #3 - REVENUE LEAKAGE:
 - They charge upfront (₹999-4,999 subscription)
 - Users pay, then complete deals offline
 - No visibility into actual transactions
 - Their take rate is <1% of transaction value
 
-HOMIE'S ADVANTAGE:
-- We charge at transaction milestones
-- Escrow gives us 100% visibility
-- Our take rate is 3-4% of transaction value
-- We have ongoing rent relationship (not one-time)
+HOMIE'S APPROACH - THE OPPOSITE:
+
+1. INFORMATION FIRST:
+   - Every listing has 15+ photos, video tour, all amenities
+   - House rules, parking, floor, everything documented
+   - Zero calls needed for basic information
+
+2. HYPER-LOCAL DOMINANCE:
+   - 100 verified properties in ONE micro-market
+   - Koramangala first, then Indiranagar, then HSR
+   - We own 80% of rentals in each neighborhood before expanding
+
+3. TRANSACTION-LINKED REVENUE:
+   - We charge at transaction milestones
+   - Escrow gives us 100% visibility
+   - Our take rate is 3-4% of transaction value
+   - We have ongoing rent relationship (not one-time)
 
 MARKET SIZE:
 - 12 million urban rental transactions/year
@@ -286,12 +322,20 @@ MARKET SIZE:
 - Total addressable market: ₹1,80,000 Cr annually
 - Even 0.1% market share = ₹180 Cr GMV
 
+WHY HYPER-LOCAL WINS:
+- Koramangala alone: 5,000 rental transactions/year
+- If we own 50% of Koramangala = 2,500 deals × ₹8,500 = ₹2.1 Cr revenue
+- From ONE neighborhood!
+- Bengaluru has 50+ such micro-markets
+- We don't need to boil the ocean
+
 WHY NOW:
 1. UPI has made micro-payments frictionless
 2. Aadhaar eSign enables digital agreements
 3. Post-COVID, renters expect digital-first experiences
 4. Trust in digital escrow is at all-time high (Razorpay, Paytm)
-5. NoBroker has educated the market on 'no broker' concept"
+5. NoBroker has EDUCATED the market - but FRUSTRATED users
+6. People are ready for a BETTER alternative, not just cheaper"
 ```
 
 ---
@@ -469,7 +513,7 @@ Thank you for your time."
 > "Great question. The viewing deposit creates a financial commitment. If they complete offline, they forfeit ₹1,000. But more importantly, once we have deposits in escrow, users WANT to stay on platform for protection. The offline deal has no deposit protection, no legal agreement, no dispute resolution. We make the on-platform experience 10x better than offline."
 
 **Q: NoBroker has massive supply. How do you compete?**
-> "We don't need to match NoBroker's supply. We need 100 quality properties in each micro-market. A tenant in Koramangala doesn't care about properties in Whitefield. We're hyper-local, quality over quantity. And our landlord value prop is stronger - pre-screened tenants, guaranteed payments, deposit protection for them too."
+> "NoBroker's massive supply is actually their WEAKNESS, not strength. 50,000 listings means 50,000 sources of incomplete information and spam calls. A tenant in Koramangala doesn't care about 49,900 properties in other areas. They want the 100 BEST options in THEIR neighborhood with COMPLETE information. That's exactly what we provide. We don't compete on quantity - we compete on relevance and quality. When you search 'Koramangala 2BHK' on Homie, every single result is verified, available, and has all the info you need. No calls required. That's our moat."
 
 **Q: What's your CAC?**
 > "Target CAC is ₹500 per tenant through referrals. Our LTV at ₹6,000 revenue per transaction gives us 12:1 LTV:CAC. Even at ₹1,000 CAC through paid ads, we're at 6:1 which is healthy for a marketplace."
