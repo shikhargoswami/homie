@@ -683,6 +683,7 @@ export enum ChatViolationType {
   EMAIL = 'email',
   SOCIAL_MEDIA = 'social_media',
   EXTERNAL_MEETING = 'external_meeting',
+  URL = 'url',
 }
 
 export enum ChatViolationAction {

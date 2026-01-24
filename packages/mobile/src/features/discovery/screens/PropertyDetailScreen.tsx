@@ -126,7 +126,11 @@ export const PropertyDetailScreen: React.FC<Props> = ({ route, navigation }) => 
 
   // Render single photo item for FlatList
   const renderPhotoItem = useCallback(({ item }: { item: string }) => (
-    <Image source={{ uri: item }} style={styles.mainImage} resizeMode="cover" />
+    <Image 
+      source={{ uri: item }} 
+      style={{ width: SCREEN_WIDTH, height: 300 }} 
+      resizeMode="cover" 
+    />
   ), []);
 
   // Handle indicator tap to jump to specific image
