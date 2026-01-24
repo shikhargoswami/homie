@@ -657,12 +657,13 @@ describe('ChatContext message handling', () => {
         await result.current.sendMessage('conv-1', 'Socket message', 'text', { key: 'value' });
       });
 
-      expect(mockSocket.emit).toHaveBeenCalledWith('send_message', {
+      expect(mockSocket.emit).toHaveBeenCalledWith('send_message', expect.objectContaining({
         conversationId: 'conv-1',
         content: 'Socket message',
         messageType: 'text',
         metadata: { key: 'value' },
-      });
+        tempId: expect.stringMatching(/^temp-\d+$/),
+      }));
     });
   });
 

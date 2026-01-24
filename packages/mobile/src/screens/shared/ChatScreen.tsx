@@ -113,6 +113,7 @@ export default function ChatScreen() {
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
+    console.log('[ChatScreen] Messages changed, count:', messages.length);
     if (messages.length > 0) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
@@ -121,8 +122,10 @@ export default function ChatScreen() {
   }, [messages]);
 
   const handleSend = useCallback(() => {
+    console.log('[ChatScreen] handleSend called, inputText:', inputText.trim(), 'conversation:', conversation?.id);
     if (!inputText.trim() || !conversation?.id) return;
 
+    console.log('[ChatScreen] Sending message...');
     sendMessage(conversation.id, inputText.trim());
     setInputText('');
   }, [inputText, conversation?.id, sendMessage]);
@@ -289,6 +292,7 @@ export default function ChatScreen() {
         <FlatList
           ref={flatListRef}
           data={messages}
+          extraData={messages.length}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}

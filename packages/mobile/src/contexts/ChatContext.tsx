@@ -108,10 +108,22 @@ export function ChatProvider({ children }: ChatProviderProps) {
         setIsConnected(false);
       });
 
-      socketRef.current.on('new_message', (message: Message) => {
+      socketRef.current.on('new_message', (message: Message & { tempId?: string }) => {
+        console.log('[ChatContext] Received new_message:', message.id, 'tempId:', message.tempId);
         setMessages(prev => {
+          // If we have a tempId, replace the optimistic message
+          if (message.tempId) {
+            const hasTemp = prev.find(m => m.id === message.tempId);
+            if (hasTemp) {
+              console.log('[ChatContext] Replacing optimistic message:', message.tempId, 'with:', message.id);
+              return prev.map(m => m.id === message.tempId ? message : m);
+            }
+          }
           // Avoid duplicates
-          if (prev.find(m => m.id === message.id)) return prev;
+          if (prev.find(m => m.id === message.id)) {
+            console.log('[ChatContext] Duplicate message, skipping:', message.id);
+            return prev;
+          }
           return [...prev, message];
         });
         
@@ -278,15 +290,49 @@ export function ChatProvider({ children }: ChatProviderProps) {
     messageType: 'text' | 'image' | 'viewing_request' = 'text',
     metadata?: Record<string, unknown>
   ) => {
+    // Get current user ID for optimistic update
+    const userJson = await AsyncStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+    const userId = user?.id;
+
+    // Create optimistic message for immediate UI update
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: tempId,
+      conversation_id: conversationId,
+      sender_id: userId || '',
+      content,
+      message_type: messageType,
+      metadata,
+      read_at: null,
+      created_at: new Date().toISOString(),
+    };
+
+    // Add message optimistically (immediate UI update)
+    console.log('[ChatContext] Adding optimistic message:', optimisticMessage.id);
+    setMessages(prev => [...prev, optimisticMessage]);
+    
+    // Update conversation's last message immediately
+    setConversations(prev => 
+      prev.map(c => 
+        c.id === conversationId
+          ? { ...c, last_message: content, last_message_at: new Date().toISOString() }
+          : c
+      )
+    );
+
     if (socketRef.current?.connected) {
+      console.log('[ChatContext] Sending message via WebSocket');
       socketRef.current.emit('send_message', {
         conversationId,
         content,
         messageType,
         metadata,
+        tempId, // Send temp ID so we can match on response
       });
     } else {
       // REST fallback
+      console.log('[ChatContext] Socket not connected, using REST fallback');
       try {
         const token = await AsyncStorage.getItem('accessToken');
         const response = await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/messages`, {
@@ -299,18 +345,20 @@ export function ChatProvider({ children }: ChatProviderProps) {
         });
         const data = await response.json();
         if (data.success && data.message) {
-          setMessages(prev => [...prev, data.message]);
-          // Update conversation's last message
-          setConversations(prev => 
-            prev.map(c => 
-              c.id === conversationId
-                ? { ...c, last_message: content, last_message_at: new Date().toISOString() }
-                : c
-            )
-          );
+          // Replace optimistic message with real one
+          console.log('[ChatContext] REST message sent, replacing optimistic message');
+          setMessages(prev => prev.map(m => 
+            m.id === tempId ? data.message : m
+          ));
+        } else {
+          // Remove optimistic message on failure
+          console.error('[ChatContext] REST send failed:', data.error);
+          setMessages(prev => prev.filter(m => m.id !== tempId));
         }
       } catch (error) {
         console.error('[ChatContext] Failed to send message:', error);
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(m => m.id !== tempId));
       }
     }
   }, []);
