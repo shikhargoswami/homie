@@ -1,14 +1,12 @@
 {
-  "name": "@homie/mobile",
+  "name": "@homie/root",
   "version": "0.1.0",
-  "main": "expo/AppEntry.js",
+  "private": true,
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "dev": "cd packages/api && npm run dev",
+    "dev:mobile": "cd packages/mobile && npx expo start",
+    "dev:api": "cd packages/api && npm run dev",
+    "test": "cd packages/api && npm test",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
   },

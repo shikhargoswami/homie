@@ -7,7 +7,7 @@ import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
  */
 
 // Use environment variable or fallback
-const API_BASE_URL = ENV_API_BASE_URL || 'http://192.168.0.109:3000';
+const API_BASE_URL = ENV_API_BASE_URL || 'http://192.168.29.142:3000';
 const API_TIMEOUT = 30000;
 
 console.log('🌐 API Base URL:', API_BASE_URL); // Debug log
